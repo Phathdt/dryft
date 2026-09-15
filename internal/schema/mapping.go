@@ -12,6 +12,7 @@ var PostgreSQLToInternal = map[string]TypeKind{
 	"varchar":                    TypeVarChar,
 	"character varying":          TypeVarChar,
 	"char":                       TypeChar,
+	"bpchar":                     TypeChar,
 	"character":                  TypeChar,
 	"integer":                    TypeInt32,
 	"int":                        TypeInt32,
