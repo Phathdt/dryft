@@ -1,0 +1,49 @@
+# Binary
+/dryft
+bin/
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+
+# Test coverage
+coverage.out
+*.coverprofile
+
+# Runtime state directory
+./dryft/
+
+# Configuration (keep examples)
+.env
+.env.local
+.dryft.yaml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+
+# Generated migration artifacts (real migrations/ should be in git)
+prisma/migrations/

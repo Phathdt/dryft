@@ -1,0 +1,39 @@
+# Dryft Configuration Example
+# Copy this file to .dryft.yaml and configure for your project
+
+database:
+  # Database provider (currently only postgresql is supported)
+  provider: postgresql
+
+  # Database connection URL (supports environment variable expansion)
+  # Example: postgresql://user:password@localhost:5432/mydb
+  url: ${DATABASE_URL}
+
+schema:
+  # Path to Prisma schema file
+  file: prisma/schema.prisma
+
+  # Naming conventions for code generation
+  naming:
+    # Field naming convention: camelCase or snake_case
+    # Database snake_case fields will be converted to camelCase in generated code
+    fields: camelCase
+
+    # Table/Model naming convention: PascalCase or snake_case
+    # Database snake_case tables will be converted to PascalCase in generated code
+    tables: PascalCase
+
+migration:
+  # Directory where migration files will be stored
+  directory: migrations
+
+  # Migration format (currently only goose is supported)
+  format: goose
+
+  # Migration file naming strategy
+  # timestamp: 20260915180000_migration_name.sql
+  naming: timestamp
+
+goose:
+  # Table name for tracking migration versions
+  version_table: goose_db_version
