@@ -20,8 +20,12 @@ func TestConstraints_SingleColumnPK(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE users (
@@ -59,8 +63,12 @@ func TestConstraints_MultiColumnPK(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE user_roles (
@@ -99,8 +107,12 @@ func TestConstraints_FKCascade(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE authors (
@@ -156,8 +168,12 @@ func TestConstraints_FKSetNull(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE departments (
@@ -208,8 +224,12 @@ func TestConstraints_FKRestrict(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE categories (
@@ -260,8 +280,12 @@ func TestConstraints_FKNoAction(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE teams (
@@ -312,8 +336,12 @@ func TestConstraints_CompositeForeignKey(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE orders (
@@ -371,8 +399,12 @@ func TestConstraints_DeferrableFK(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE nodes (
@@ -419,8 +451,12 @@ func TestConstraints_CheckConstraint(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE users (
@@ -463,8 +499,12 @@ func TestConstraints_UniqueConstraint(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE accounts (

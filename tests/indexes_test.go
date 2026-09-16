@@ -20,9 +20,12 @@ func TestIndexes_BTree(t *testing.T) {
 
 	ctx := context.Background()
 
-	// 1. Start PostgreSQL container
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// 2. Create table with BTree index (default)
 	sql := `
@@ -81,8 +84,12 @@ func TestIndexes_GIN(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// Create table with GIN index using pg_trgm extension
 	sql := `
@@ -137,8 +144,12 @@ func TestIndexes_GiST(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// Create table with GiST index using btree_gist extension
 	sql := `
@@ -191,8 +202,12 @@ func TestIndexes_Hash(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE sessions (
@@ -242,8 +257,12 @@ func TestIndexes_Partial(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE users (
@@ -294,8 +313,12 @@ func TestIndexes_Unique(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE users (
@@ -357,8 +380,12 @@ func TestIndexes_MultiColumnSortOrders(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE posts (
@@ -417,8 +444,12 @@ func TestIndexes_Expression(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `
 		CREATE TABLE users (

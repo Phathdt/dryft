@@ -20,8 +20,13 @@ func TestTypes_UUID(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,
@@ -63,8 +68,13 @@ func TestTypes_Text(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,
@@ -107,8 +117,13 @@ func TestTypes_VarChar(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,
@@ -150,8 +165,13 @@ func TestTypes_Char(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,
@@ -193,8 +213,13 @@ func TestTypes_Int32(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,
@@ -235,8 +260,13 @@ func TestTypes_Int64(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,
@@ -277,8 +307,13 @@ func TestTypes_Boolean(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,
@@ -320,8 +355,13 @@ func TestTypes_Float32(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,
@@ -362,8 +402,13 @@ func TestTypes_Float64(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,
@@ -404,8 +449,13 @@ func TestTypes_Numeric(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,
@@ -449,8 +499,13 @@ func TestTypes_Timestamp(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,
@@ -491,8 +546,13 @@ func TestTypes_TimestampTZ(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,
@@ -534,8 +594,13 @@ func TestTypes_Date(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,
@@ -576,8 +641,13 @@ func TestTypes_JSON(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,
@@ -618,8 +688,13 @@ func TestTypes_JSONB(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	// Cleanup tables after test
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	sql := `CREATE TABLE test_table (
 		id INTEGER PRIMARY KEY,

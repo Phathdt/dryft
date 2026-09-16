@@ -31,9 +31,12 @@ func TestE2E_BasicRoundTrip(t *testing.T) {
 
 	ctx := context.Background()
 
-	// 1. Setup PostgreSQL container
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	connStr := container.ConnString
 
@@ -110,9 +113,12 @@ func TestE2E_ModifyAndMigrate(t *testing.T) {
 
 	ctx := context.Background()
 
-	// 1. Setup PostgreSQL container
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	connStr := container.ConnString
 
@@ -217,13 +223,16 @@ func TestE2E_ComplexSchema(t *testing.T) {
 
 	ctx := context.Background()
 
-	// 1. Setup PostgreSQL container
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	connStr := container.ConnString
 
-	// 2. Apply complex schema
+	// Apply complex schema
 	complexSQL := `
 		CREATE TYPE user_role AS ENUM ('USER', 'ADMIN');
 

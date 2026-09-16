@@ -20,8 +20,12 @@ func TestEdgeCases_EmptySchema(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// Introspect empty database
 	introspector, err := postgres.NewPostgresIntrospector(ctx, container.ConnString)
@@ -43,8 +47,12 @@ func TestEdgeCases_TableWithoutPK(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// Create table without primary key
 	sql := `
@@ -80,8 +88,12 @@ func TestEdgeCases_InvalidFKReference(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// Attempt to create table with FK to non-existent table
 	sql := `
@@ -105,8 +117,12 @@ func TestEdgeCases_DuplicateTableNames(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// Create first table
 	sql1 := `CREATE TABLE users (id INT PRIMARY KEY);`
@@ -130,8 +146,12 @@ func TestEdgeCases_ReservedKeywords(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// Create table with reserved keywords (quoted)
 	sql := `
@@ -172,8 +192,12 @@ func TestEdgeCases_LongIdentifiers(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// PostgreSQL truncates at 63 chars
 	longTableName := "this_is_a_very_long_table_name_that_exceeds_the_sixty_three_character_limit_for_postgres"
@@ -220,8 +244,12 @@ func TestEdgeCases_UnicodeIdentifiers(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// Create table with Unicode identifiers
 	sql := `
@@ -262,8 +290,12 @@ func TestEdgeCases_NullDefaultVsNoDefault(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// Create table with various default scenarios
 	sql := `
@@ -317,8 +349,12 @@ func TestEdgeCases_SchemaDrift(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// 1. Create initial schema
 	sql1 := `
@@ -372,8 +408,12 @@ func TestEdgeCases_MultipleIndexesSameColumn(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// Create table with multiple indexes on same column
 	sql := `
@@ -424,8 +464,12 @@ func TestEdgeCases_SelfReferencingFK(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// Create table with self-referencing FK
 	sql := `
@@ -464,8 +508,12 @@ func TestEdgeCases_CircularFKs(t *testing.T) {
 
 	ctx := context.Background()
 
-	container, err := testutil.StartPostgres(ctx, t)
+	container, err := testutil.GetSharedContainer(ctx)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = container.CleanupTables(context.Background())
+	})
 
 	// Create circular FK relationship
 	sql := `
