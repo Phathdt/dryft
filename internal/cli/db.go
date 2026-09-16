@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/phathdt/dryft/internal/config"
 	"github.com/phathdt/dryft/internal/introspect/postgres"
+	"github.com/phathdt/dryft/internal/prisma"
 	"github.com/urfave/cli/v3"
 )
 
@@ -20,8 +22,7 @@ func DBCommand() *cli.Command {
 				Name:  "pull",
 				Usage: "Introspect DB → schema.prisma",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					fmt.Println("Not implemented yet")
-					return nil
+					return cmdDbPull(ctx, cmd)
 				},
 			},
 			{
@@ -41,6 +42,64 @@ func DBCommand() *cli.Command {
 			},
 		},
 	}
+}
+
+// cmdDbPull introspects the database and writes schema.prisma file.
+func cmdDbPull(ctx context.Context, cmd *cli.Command) error {
+	// Load configuration
+	cfg, err := config.Load(".dryft.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Validate database URL
+	if cfg.Database.URL == "" {
+		return fmt.Errorf("database.url not configured in .dryft.yaml")
+	}
+
+	// Create introspector
+	intr, err := postgres.NewPostgresIntrospector(ctx, cfg.Database.URL)
+	if err != nil {
+		return fmt.Errorf("failed to create introspector: %w", err)
+	}
+	defer intr.Close()
+
+	// Introspect schema
+	schema, err := intr.Introspect(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to introspect schema: %w", err)
+	}
+
+	// Create Prisma writer with default naming convention
+	writer := prisma.NewWriter(prisma.DefaultNamingConvention())
+
+	// Convert to Prisma schema
+	prismaSchema, err := writer.Write(schema)
+	if err != nil {
+		return fmt.Errorf("failed to generate Prisma schema: %w", err)
+	}
+
+	// Determine output file path
+	schemaFile := cfg.Schema.File
+	if schemaFile == "" {
+		schemaFile = "prisma/schema.prisma"
+	}
+
+	// Create directory if it doesn't exist
+	if err := os.MkdirAll(filepath.Dir(schemaFile), 0755); err != nil {
+		return fmt.Errorf("failed to create schema directory: %w", err)
+	}
+
+	// Write schema to file
+	if err := os.WriteFile(schemaFile, []byte(prismaSchema), 0644); err != nil {
+		return fmt.Errorf("failed to write schema file: %w", err)
+	}
+
+	fmt.Printf("✓ Schema written to %s\n", schemaFile)
+	fmt.Printf("  Models: %d\n", len(schema.Tables))
+	fmt.Printf("  Enums: %d\n", len(schema.Enums))
+
+	return nil
 }
 
 // cmdDbInspect introspects the database and prints the schema as JSON.
