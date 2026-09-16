@@ -104,7 +104,19 @@ make dev
 
 ## Development Status
 
-🚧 **v0.1 MVP in development** - Phase 1 complete
+✅ **v0.1 MVP Complete** - All 8 phases implemented and tested
+
+- ✅ CLI framework and configuration
+- ✅ Internal schema model (normalized IR)
+- ✅ PostgreSQL introspection
+- ✅ Prisma schema writer with relation fields
+- ✅ Prisma schema parser
+- ✅ Schema diff engine with dependency ordering
+- ✅ PostgreSQL SQL generator
+- ✅ Goose migration formatter
+- ✅ 57 integration tests passing (testcontainers)
+
+See [MVP_COMPLETE.md](./MVP_COMPLETE.md) for detailed summary.
 
 ## License
 

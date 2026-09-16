@@ -115,16 +115,25 @@ func TestSomething_Integration(t *testing.T) {
 
 ## Current Implementation Status
 
-**Phase 1-4 Complete** (as of 2026-09-16):
+**🎉 MVP Complete** (all 8 phases, as of 2026-09-16):
 - ✅ CLI framework and config loading
-- ✅ Internal schema model
+- ✅ Internal schema model (normalized IR)
 - ✅ PostgreSQL introspection (tables, columns, constraints, indexes, enums)
 - ✅ Prisma schema writer with relation field generation
+- ✅ Prisma schema parser (back to internal schema)
+- ✅ Schema diff engine with dependency ordering
+- ✅ PostgreSQL SQL generator
+- ✅ Goose migration formatter (Up/Down migrations)
+- ✅ 57 integration tests passing (testcontainers)
 
-**Not Yet Implemented**:
-- Schema diff engine (`diff` package)
-- Migration generation (`migration` package)
-- SQL DDL generation (`sql` package)
+**Test Coverage**:
+- Round-trip integrity: DB → Prisma → Parse → Verify
+- Determinism: Same input → same SQL
+- Destructive protection: DROP/ALTER safeguards
+- All PostgreSQL types (15 tests)
+- Constraints: PKs, FKs, CHECK, UNIQUE (10 tests)
+- Indexes: BTree, GIN, GiST, Hash, partial (8 tests)
+- Edge cases: Unicode, keywords, circular FKs (12 tests)
 
 ## Configuration
 
