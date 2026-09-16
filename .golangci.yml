@@ -32,6 +32,12 @@ issues:
 
 output:
   formats:
-    - format: colored-line-number
+    text:
       path: stdout
+      print-linter-name: true
+      print-issued-lines: true
   show-stats: true
+  sort-order:
+    - severity
+    - file
+    - linter
