@@ -1,0 +1,14 @@
+// Various indexes
+model Product {
+  id          Int     @id @default(autoincrement())
+  sku         String  @unique
+  name        String
+  category    String
+  subcategory String
+  price       Int
+
+  @@index([category])
+  @@index([category, subcategory])
+  @@unique([name, category])
+  @@map("products")
+}

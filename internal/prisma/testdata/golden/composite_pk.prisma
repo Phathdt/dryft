@@ -1,0 +1,8 @@
+// Composite primary key
+model UserRole {
+  userId String @db.Uuid
+  roleId Int
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}

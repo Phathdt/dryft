@@ -1,0 +1,21 @@
+// Enum types
+enum Role {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model User {
+  id     Int    @id @default(autoincrement())
+  email  String @unique
+  role   Role   @default(USER)
+  status Status @default(ACTIVE)
+
+  @@map("users")
+}
