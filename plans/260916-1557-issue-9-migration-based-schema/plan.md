@@ -14,13 +14,18 @@ Hiện tại `dryft migration create` dùng DB introspection để detect schema
 
 ## Solution Overview
 
-Parse existing migration files để build virtual schema, dùng làm baseline thay vì DB introspection:
+Parse existing migration files để build virtual schema, dùng làm baseline (100% offline):
 
 ```
-Current:  DB introspection → schema → diff → migration
-New:      migrations/ → parse SQL → virtual schema → diff → migration
-Fallback: Empty migrations/ → DB introspection (existing behavior)
+Current:  DB introspection → schema → diff → migration (requires DB)
+New:      migrations/ → parse SQL → virtual schema → diff → migration (offline)
 ```
+
+**Key Changes:**
+- `migration create`: 100% offline, no DB connection needed
+- Empty migrations/ → empty schema (first migration scenario)
+- No fallback to DB introspection
+- `db pull`: Still uses DB introspection (unchanged)
 
 ## Architecture Components
 
@@ -78,12 +83,13 @@ Build `schema.Schema` từ SQL statements:
 
 Replace `introspectDatabase()` logic:
 - Try migration-based schema first (via loader + builder)
-- Fallback to DB introspection if migrations/ empty
-- Add `--from-db` flag để force DB introspection
-- Preserve error handling
+- Empty migrations/ → empty schema (first migration)
+- **No DB fallback** - 100% offline
+- Remove DB connection từ `migration create`
+- Preserve `db pull` command (still uses DB)
 
 **Dependencies:** Phase 1, 2, 3  
-**Risk:** Breaking existing workflows
+**Risk:** Breaking existing workflows (medium)
 
 ## Acceptance Criteria
 
@@ -91,11 +97,12 @@ Replace `introspectDatabase()` logic:
 - [ ] Parse CREATE/ALTER/DROP TYPE (enum) statements  
 - [ ] Parse CREATE/DROP INDEX statements
 - [ ] Load migrations chronologically và build schema
-- [ ] `migration create` dùng migration-based schema by default
-- [ ] Incremental migrations work without DB connection
-- [ ] `--from-db` flag forces DB introspection
+- [ ] `migration create` works **100% offline** without DB connection
+- [ ] Empty migrations/ → empty schema (first migration)
+- [ ] Incremental migrations work correctly
 - [ ] Tests: parser, loader, builder, integration
 - [ ] Documentation updated (README.md, CLAUDE.md)
+- [ ] `db pull` still works (unchanged)
 
 ## Testing Strategy
 
@@ -119,7 +126,7 @@ Replace `introspectDatabase()` logic:
 |------|--------|-----------|
 | SQL parser incomplete | High | Start with common DDL subset, expand iteratively |
 | Statement order bugs | High | Comprehensive unit tests for builder state |
-| Breaking existing workflows | Medium | Preserve DB introspection as fallback |
+| Breaking existing workflows | Medium | Clear error messages, empty migrations = first migration |
 | Performance with many migrations | Low | Lazy loading, caching if needed |
 
 ## Open Questions

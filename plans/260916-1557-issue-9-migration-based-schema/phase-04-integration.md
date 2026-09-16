@@ -13,8 +13,9 @@ Integrate migration-based schema detection vào `dryft migration create` command
 
 ### In Scope
 - Replace `introspectDatabase()` call với migration-based loader
-- Fallback to DB introspection khi migrations directory empty
-- Add `--from-db` flag để force DB introspection
+- **100% offline** - không cần DB connection
+- Empty migrations/ → empty schema (first migration scenario)
+- Remove DB introspection fallback từ `migration create`
 - Preserve error handling và messaging
 - Update help text
 
@@ -22,6 +23,7 @@ Integrate migration-based schema detection vào `dryft migration create` command
 - Changes to diff/plan/SQL generation logic
 - Migration execution
 - Schema validation beyond parsing
+- DB introspection (only for `db pull` command)
 
 ## Current Flow Analysis
 
@@ -48,43 +50,47 @@ Current `migrationCreateAction()` flow:
 ```go
 // internal/cli/migration.go
 
-// loadPreviousSchema loads the previous schema state from migrations or database.
-// Priority:
-//   1. Migration-based schema (if migrations exist and --from-db not set)
-//   2. Database introspection (fallback or when --from-db is set)
-func loadPreviousSchema(ctx context.Context, cfg *config.Config, forceDB bool) (*schema.Schema, error) {
+// loadPreviousSchemaFromMigrations loads the previous schema state from migration history.
+// This function is 100% offline and does not require database connection.
+//
+// Returns:
+//   - Non-empty schema if migrations exist
+//   - Empty schema if migrations directory is empty (first migration scenario)
+//   - Error only if migration parsing fails
+func loadPreviousSchemaFromMigrations(cfg *config.Config) (*schema.Schema, error) {
 	migrationDir := cfg.Migration.Directory
 
-	// Force DB introspection if flag set
-	if forceDB {
-		fmt.Println("Using database introspection (--from-db)")
-		return introspectDatabase(ctx, cfg)
+	if migrationDir == "" {
+		return nil, fmt.Errorf("migration directory not configured")
 	}
 
-	// Try migration-based schema first
-	if migrationDir != "" {
-		s, err := migration.LoadSchemaFromMigrations(migrationDir)
-		if err != nil {
-			// Migration parsing failed - this is an error, not a fallback case
-			return nil, fmt.Errorf("failed to load schema from migrations: %w", err)
-		}
-
-		if s != nil {
-			// Successfully loaded from migrations
-			fmt.Printf("Loaded previous schema from %d migration files\n", len(getMigrationCount(migrationDir)))
-			return s, nil
-		}
-
-		// s == nil means no migrations found - fallback to DB
-		fmt.Println("No migrations found, using database introspection")
+	// Load schema from migration files
+	s, err := migration.LoadSchemaFromMigrations(migrationDir)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to load schema from migrations in %s: %w\n\n"+
+				"Fix the migration file syntax error and try again.",
+			migrationDir, err,
+		)
 	}
 
-	// Fallback: DB introspection
-	return introspectDatabase(ctx, cfg)
+	if s == nil {
+		// No migrations found - return empty schema for first migration
+		fmt.Println("No migrations found, treating as empty schema (first migration)")
+		return &schema.Schema{
+			Tables: []schema.Table{},
+			Enums:  []schema.Enum{},
+		}, nil
+	}
+
+	// Successfully loaded from migrations
+	count := countMigrationFiles(migrationDir)
+	fmt.Printf("✓ Loaded schema from %d migration(s)\n", count)
+	return s, nil
 }
 
-// getMigrationCount returns count of .sql files in directory (for logging)
-func getMigrationCount(dir string) int {
+// countMigrationFiles returns count of .sql files in directory
+func countMigrationFiles(dir string) int {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return 0
@@ -105,10 +111,8 @@ func getMigrationCount(dir string) int {
 func migrationCreateAction(_ context.Context, cmd *cli.Command) error {
 	// ... (steps 1-4 unchanged)
 
-	// 5. Load previous schema state from migrations or database
-	ctx := context.Background()
-	forceDB := cmd.Bool("from-db")
-	previousSchema, err := loadPreviousSchema(ctx, cfg, forceDB)
+	// 5. Load previous schema state from migration history (100% offline)
+	previousSchema, err := loadPreviousSchemaFromMigrations(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to load previous schema state: %w", err)
 	}
@@ -117,7 +121,7 @@ func migrationCreateAction(_ context.Context, cmd *cli.Command) error {
 }
 ```
 
-### 3. Add CLI Flag
+### 3. Update CLI Command (Remove --from-db Flag)
 
 ```go
 func MigrationCommand() *cli.Command {
@@ -127,16 +131,12 @@ func MigrationCommand() *cli.Command {
 		Commands: []*cli.Command{
 			{
 				Name:      "create",
-				Usage:     "Generate Goose migration from schema diff",
+				Usage:     "Generate Goose migration from schema diff (100% offline)",
 				ArgsUsage: "<name>",
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:  "allow-destructive",
 						Usage: "Allow destructive operations (DROP TABLE, DROP COLUMN, etc.)",
-					},
-					&cli.BoolFlag{
-						Name:  "from-db",
-						Usage: "Force database introspection instead of using migration history",
 					},
 				},
 				Action: migrationCreateAction,
@@ -150,46 +150,42 @@ func MigrationCommand() *cli.Command {
 ### 4. Enhanced Error Messages
 
 ```go
-func loadPreviousSchema(ctx context.Context, cfg *config.Config, forceDB bool) (*schema.Schema, error) {
+func loadPreviousSchemaFromMigrations(cfg *config.Config) (*schema.Schema, error) {
 	migrationDir := cfg.Migration.Directory
 
-	if forceDB {
-		fmt.Println("Using database introspection (--from-db)")
-		return introspectDatabase(ctx, cfg)
+	if migrationDir == "" {
+		return nil, fmt.Errorf("migration directory not configured in .dryft.yaml")
 	}
 
-	if migrationDir != "" {
-		s, err := migration.LoadSchemaFromMigrations(migrationDir)
-		if err != nil {
-			// Provide actionable error message
-			return nil, fmt.Errorf(
-				"failed to load schema from migrations in %s: %w\n\n"+
-					"Possible solutions:\n"+
-					"  1. Fix the migration file syntax error\n"+
-					"  2. Use --from-db to skip migration parsing and use database instead\n"+
-					"  3. Remove invalid migration files",
-				migrationDir, err,
-			)
-		}
-
-		if s != nil {
-			count := getMigrationCount(migrationDir)
-			if count > 0 {
-				fmt.Printf("✓ Loaded schema from %d migration(s)\n", count)
-			}
-			return s, nil
-		}
-
-		fmt.Println("No migrations found, using database introspection")
+	s, err := migration.LoadSchemaFromMigrations(migrationDir)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to load schema from migrations in %s: %w\n\n"+
+				"Fix the migration file syntax error and try again.",
+			migrationDir, err,
+		)
 	}
 
-	return introspectDatabase(ctx, cfg)
+	if s == nil {
+		// No migrations found - first migration scenario
+		fmt.Println("No migrations found, treating as empty schema (first migration)")
+		return &schema.Schema{
+			Tables: []schema.Table{},
+			Enums:  []schema.Enum{},
+		}, nil
+	}
+
+	count := countMigrationFiles(migrationDir)
+	fmt.Printf("✓ Loaded schema from %d migration(s)\n", count)
+	return s, nil
 }
 ```
 
-### 5. Keep introspectDatabase() Unchanged
+### 5. Remove introspectDatabase() from migration create
 
-Preserve existing `introspectDatabase()` function (line 183-221) - no changes needed. It remains as fallback path.
+`introspectDatabase()` function (line 183-221) sẽ **bị xóa** hoặc chỉ còn dùng cho `db pull` command.
+
+`migration create` command **không cần** DB connection.
 
 ## User Experience Changes
 
@@ -203,7 +199,17 @@ Operations:
   - CREATE TABLE users (id SERIAL, email TEXT, bio TEXT)  # Wrong! Should be ALTER
 ```
 
-### After (With Migrations)
+### After (100% Offline, First Migration)
+```bash
+$ dryft migration create initial
+No migrations found, treating as empty schema (first migration)
+✓ Created migration: 20240916000000_initial.sql
+
+Operations:
+  - CREATE TABLE users (id SERIAL, email TEXT)
+```
+
+### After (100% Offline, Incremental Migration)
 ```bash
 $ dryft migration create add_bio
 ✓ Loaded schema from 2 migration(s)
@@ -213,26 +219,13 @@ Operations:
   - ALTER TABLE users ADD COLUMN bio TEXT  # Correct!
 ```
 
-### After (Force DB)
-```bash
-$ dryft migration create add_bio --from-db
-Using database introspection (--from-db)
-✓ Created migration: 20240916000000_add_bio.sql
-
-Operations:
-  - ALTER TABLE users ADD COLUMN bio TEXT
-```
-
 ### After (Parse Error)
 ```bash
 $ dryft migration create add_bio
 Error: failed to load previous schema state: failed to load schema from migrations in ./migrations: parse error at position 45: unexpected token 'CONSTRAINT'
 SQL: ALTER TABLE users ADD CONSTRAINT ...
 
-Possible solutions:
-  1. Fix the migration file syntax error
-  2. Use --from-db to skip migration parsing and use database instead
-  3. Remove invalid migration files
+Fix the migration file syntax error and try again.
 ```
 
 ## Testing
@@ -272,7 +265,7 @@ model User {
 }
 `), 0644)
 
-	// Create config
+	// Create config (NO DATABASE_URL)
 	configFile := filepath.Join(tmpDir, ".dryft.yaml")
 	os.WriteFile(configFile, []byte(fmt.Sprintf(`
 database:
@@ -287,7 +280,7 @@ migration:
   format: goose
 `, schemaFile, migrationsDir)), 0644)
 
-	// Run command
+	// Run command (100% offline)
 	os.Chdir(tmpDir)
 	
 	app := createTestApp()
@@ -305,57 +298,81 @@ migration:
 	assert.NotContains(t, string(content), "CREATE TABLE users")
 }
 
-func TestMigrationCreate_ForceDB(t *testing.T) {
+func TestMigrationCreate_EmptyMigrations_FirstMigration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
 
-	container := testutil.SetupPostgresContainer(t)
-	defer container.Terminate(context.Background())
+	// Setup with empty migrations directory
+	tmpDir := t.TempDir()
+	migrationsDir := filepath.Join(tmpDir, "migrations")
+	os.MkdirAll(migrationsDir, 0755)
 
-	// Setup with both migrations and database
-	// ... setup code ...
+	schemaFile := filepath.Join(tmpDir, "schema.prisma")
+	os.WriteFile(schemaFile, []byte(`
+model User {
+  id    Int    @id @default(autoincrement())
+  email String
+}
+`), 0644)
 
-	// Run with --from-db flag
+	configFile := filepath.Join(tmpDir, ".dryft.yaml")
+	os.WriteFile(configFile, []byte(fmt.Sprintf(`
+database:
+  provider: postgresql
+  url: ""
+
+schema:
+  file: %s
+
+migration:
+  directory: %s
+  format: goose
+`, schemaFile, migrationsDir)), 0644)
+
+	os.Chdir(tmpDir)
+	
 	app := createTestApp()
-	err := app.Run(context.Background(), []string{
-		"dryft", "migration", "create", "add_bio", "--from-db",
-	})
+	err := app.Run(context.Background(), []string{"dryft", "migration", "create", "initial"})
 	require.NoError(t, err)
 
-	// Verify it used DB, not migrations (check output/logs)
-}
+	// Verify migration created with CREATE TABLE
+	files, _ := os.ReadDir(migrationsDir)
+	assert.Len(t, files, 1)
 
-func TestMigrationCreate_EmptyMigrations(t *testing.T) {
-	// Test fallback behavior when migrations/ is empty
-	// Should use DB introspection automatically
+	content, _ := os.ReadFile(filepath.Join(migrationsDir, files[0].Name()))
+	assert.Contains(t, string(content), "CREATE TABLE users")
 }
 
 func TestMigrationCreate_MalformedMigration(t *testing.T) {
 	// Test error handling when migration file has parse errors
-	// Should fail with actionable message
+	// Should fail with descriptive message
+}
+
+func TestMigrationCreate_NoDBConnection(t *testing.T) {
+	// Verify migration create works 100% offline
+	// No DB connection attempted
 }
 ```
 
 ### Manual Testing Checklist
 
 - [ ] Create migration với existing migrations → incremental ALTER
-- [ ] Create migration với empty migrations/ → CREATE TABLE
-- [ ] Create migration với `--from-db` flag → uses DB
+- [ ] Create migration với empty migrations/ → CREATE TABLE (first migration)
 - [ ] Create migration với parse error → descriptive error
-- [ ] Create migration với no DB connection, có migrations → works offline
-- [ ] Create migration với no DB connection, no migrations → falls back gracefully
+- [ ] Create migration **without DB connection** → works 100% offline
+- [ ] Verify `db pull` still uses DB introspection (unchanged)
 
 ## Documentation Updates
 
 ### README.md
 
-Add section explaining migration-based schema:
+Add section explaining 100% offline migration generation:
 
 ```markdown
 ## How It Works
 
-dryft generates incremental migrations by comparing your Prisma schema against the **migration history**:
+dryft generates incremental migrations by comparing your Prisma schema against **migration history** (100% offline):
 
 1. **Parse existing migrations** in `migrations/` directory
 2. Build virtual schema from migration history
@@ -364,25 +381,28 @@ dryft generates incremental migrations by comparing your Prisma schema against t
 
 ### Offline Migration Generation
 
-Because dryft uses migration history, you can generate migrations **without a database connection**:
+dryft migration generation is **100% offline** and does NOT require database connection:
 
 ```bash
-# Works offline if you have migration files
+# First migration (empty migrations/ directory)
+dryft migration create initial
+# → Creates full schema (CREATE TABLE)
+
+# Incremental migrations (existing migrations/ files)
 dryft migration create add_user_bio
+# → Creates incremental changes (ALTER TABLE)
 ```
 
-### Force Database Introspection
+### When to Use Database Connection
 
-To use database introspection instead of migration history:
+Database connection is ONLY needed for `db pull`:
 
 ```bash
-dryft migration create add_user_bio --from-db
+# Introspect existing database → generate schema.prisma
+dryft db pull
 ```
 
-This is useful when:
-- Migration history is incomplete or corrupted
-- You want to sync with actual database state
-- Debugging migration parsing issues
+After `db pull`, all future migrations are generated offline from migration history.
 ```
 
 ### CLAUDE.md
@@ -393,49 +413,55 @@ Update command documentation:
 ## Commands
 
 ```bash
-dryft migration create <name>  # Generate migration from schema diff
-  --allow-destructive         # Allow DROP operations
-  --from-db                   # Force database introspection (skip migration history)
+dryft db pull                      # Introspect PostgreSQL → generate schema.prisma (requires DB)
+dryft migration create <name>      # Generate migration from schema diff (100% offline)
+  --allow-destructive              # Allow DROP operations
+dryft schema diff                  # Preview changes between schemas
+dryft validate                     # Validate Prisma schema
 ```
 
-**Migration Detection:**
-- Default: Uses migration history from `migrations/` directory
-- Fallback: Database introspection if no migrations exist
-- Force DB: Use `--from-db` flag to skip migration parsing
+**Migration Generation (100% Offline):**
+- Uses migration history from `migrations/` directory
+- Empty migrations → first migration (CREATE TABLE all)
+- Existing migrations → incremental migration (ALTER TABLE)
+- No database connection required
 ```
 
 ## Files to Modify
 
 ```
-internal/cli/migration.go       # Add loadPreviousSchema(), update flags
-internal/cli/migration_test.go  # Add integration tests
-README.md                       # Add "How It Works" section
+internal/cli/migration.go       # Replace introspectDatabase with loadPreviousSchemaFromMigrations
+                                # Remove DB connection logic from migration create
+internal/cli/migration_test.go  # Add integration tests for offline workflow
+README.md                       # Add "How It Works" section (100% offline)
 CLAUDE.md                       # Update command docs
 ```
 
 ## Validation
 
 **Done When:**
-- [ ] `loadPreviousSchema()` implemented with migration priority
-- [ ] `--from-db` flag added and functional
+- [ ] `loadPreviousSchemaFromMigrations()` implemented (no DB fallback)
+- [ ] DB connection logic removed from `migration create`
+- [ ] Empty migrations/ returns empty schema (first migration scenario)
 - [ ] Error messages actionable
-- [ ] Integration tests pass
+- [ ] Integration tests pass (100% offline tests)
 - [ ] Manual testing checklist complete
 - [ ] Documentation updated (README, CLAUDE.md)
 - [ ] Existing tests still pass (regression check)
+- [ ] Verify `db pull` still works (unchanged)
 
 ## Rollback Plan
 
 Changes isolated to `migration.go`. Can revert by:
-1. Remove `loadPreviousSchema()` function
-2. Restore direct `introspectDatabase()` call
-3. Remove `--from-db` flag
+1. Restore `introspectDatabase()` call
+2. Remove `loadPreviousSchemaFromMigrations()` function
 
-No breaking changes to config or APIs.
+No breaking changes to config, APIs, or `db pull` command.
 
 ## Notes
 
-- Preserve backward compatibility - existing workflows unaffected
-- Migration-based approach is **additive**, not replacement
-- DB introspection remains supported and available
-- Error messages guide users to workarounds (`--from-db`)
+- `migration create` là **100% offline** - không cần DB connection
+- `db pull` vẫn dùng DB introspection (unchanged)
+- Empty migrations/ = first migration = empty schema
+- Migration parsing error → fail hard với clear message
+- No fallback to DB - migration history is source of truth

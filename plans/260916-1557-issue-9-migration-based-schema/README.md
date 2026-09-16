@@ -13,9 +13,17 @@
 
 `dryft migration create` dùng DB introspection → khi connection fail → fallback empty schema → tạo full CREATE TABLE thay vì incremental ALTER.
 
+**New Requirement:** `migration create` phải 100% offline, không cần DB connection, chỉ dùng migration history.
+
 ## Solution
 
-Parse existing migration files để build virtual schema làm baseline thay vì DB introspection.
+Parse existing migration files để build virtual schema làm baseline (100% offline, no DB connection needed).
+
+**Key Points:**
+- `migration create`: 100% offline, no DB fallback
+- Empty migrations/ → empty schema → first migration (CREATE TABLE)
+- Existing migrations → incremental migration (ALTER TABLE)
+- `db pull`: Still uses DB introspection (unchanged)
 
 ## Plan Structure
 
@@ -44,17 +52,19 @@ plans/260916-1557-issue-9-migration-based-schema/
 | Invalid migrations | Fail hard | Schema correctness critical |
 | Goose sections | Only parse Up | Down không cần cho current state |
 | Parser approach | Token-based, not formal lexer | Simpler, sufficient for DDL subset |
-| Fallback behavior | DB introspection if empty migrations/ | Preserve existing workflow |
+| DB connection | No fallback, 100% offline | Migration history is source of truth |
+| Empty migrations | Return empty schema | First migration scenario |
 
 ## Success Criteria
 
 - [ ] Parse CREATE/ALTER/DROP TABLE, TYPE, INDEX
 - [ ] Load migrations chronologically
 - [ ] Build incremental schema correctly
-- [ ] `migration create` works offline with migrations
-- [ ] `--from-db` flag forces DB introspection
+- [ ] `migration create` works **100% offline** without DB
+- [ ] Empty migrations/ → empty schema → first migration
 - [ ] All tests pass (unit + integration)
 - [ ] Documentation updated
+- [ ] `db pull` unchanged (still uses DB)
 
 ## New Files Created
 
@@ -74,9 +84,10 @@ internal/migration/
 ## Modified Files
 
 ```
-internal/cli/migration.go       # Add loadPreviousSchema(), --from-db flag
-internal/cli/migration_test.go  # Integration tests
-README.md                       # Add "How It Works" section
+internal/cli/migration.go       # Replace introspectDatabase with loadPreviousSchemaFromMigrations
+                                # Remove DB connection logic, no fallback
+internal/cli/migration_test.go  # Integration tests for offline workflow
+README.md                       # Add "How It Works" section (100% offline)
 CLAUDE.md                       # Update command docs
 ```
 
