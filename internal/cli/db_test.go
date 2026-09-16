@@ -32,8 +32,10 @@ func TestCmdDbPull_Success(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	err := os.WriteFile(".dryft.yaml", []byte(validFullConfig), 0644)
 	require.NoError(t, err)
@@ -47,8 +49,10 @@ func TestCmdDbPull_Success(t *testing.T) {
 func TestCmdDbPull_ConfigNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	app := NewApp()
 	ctx := context.Background()
@@ -63,8 +67,10 @@ func TestCmdDbPull_ConfigNotFound(t *testing.T) {
 func TestCmdDbPull_MissingDatabaseURL(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create config without database URL but with required migration config
 	configContent := `database:
@@ -92,8 +98,10 @@ migration:
 func TestCmdDbInspect_ConfigNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	app := NewApp()
 	ctx := context.Background()
@@ -108,8 +116,10 @@ func TestCmdDbInspect_ConfigNotFound(t *testing.T) {
 func TestCmdDbInspect_MissingDatabaseURL(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create config without database URL
 	configContent := `database:
@@ -141,8 +151,10 @@ func TestCmdDbPull_InvalidDatabaseURL(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create config with invalid connection string
 	configContent := `database:
@@ -179,8 +191,10 @@ func TestCmdDbInspect_InvalidDatabaseURL(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create config with invalid connection string
 	configContent := `database:
@@ -209,8 +223,10 @@ migration:
 func TestCmdDbPull_SchemaDirectoryCreation(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create config with nested schema path
 	configContent := `database:

@@ -124,12 +124,12 @@ func TestDeterminism_OperationOrdering(t *testing.T) {
 				PrimaryKey: &schema.PrimaryKey{Columns: []string{"id"}},
 				ForeignKeys: []schema.ForeignKey{
 					{
-						Name:      "fk_posts_user_id",
-						Columns:   []string{"user_id"},
-						RefTable:  "users",
+						Name:       "fk_posts_user_id",
+						Columns:    []string{"user_id"},
+						RefTable:   "users",
 						RefColumns: []string{"id"},
-						OnDelete:  schema.ActionCascade,
-						OnUpdate:  schema.ActionNoAction,
+						OnDelete:   schema.ActionCascade,
+						OnUpdate:   schema.ActionNoAction,
 					},
 				},
 			},

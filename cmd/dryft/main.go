@@ -1,3 +1,4 @@
+// Package main implements the dryft CLI tool for PostgreSQL schema management.
 package main
 
 import (
@@ -9,7 +10,8 @@ import (
 )
 
 func main() {
-	if err := cli.NewApp().Run(context.Background(), os.Args); err != nil {
+	app := cli.NewApp()
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

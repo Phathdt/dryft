@@ -122,10 +122,10 @@ func TestSanitizeName(t *testing.T) {
 
 func TestParseFilename(t *testing.T) {
 	tests := []struct {
-		filename  string
-		wantTS    string
-		wantName  string
-		wantOK    bool
+		filename string
+		wantTS   string
+		wantName string
+		wantOK   bool
 	}{
 		{
 			filename: "20260915180000_create_users.sql",

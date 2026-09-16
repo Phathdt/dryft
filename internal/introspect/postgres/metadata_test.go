@@ -311,7 +311,7 @@ This comment is meant to test that long comments are properly handled by the int
 			id UUID PRIMARY KEY,
 			content TEXT
 		);
-		COMMENT ON TABLE documents IS $long$` + longComment + `$long$;
+		COMMENT ON TABLE documents IS $long$`+longComment+`$long$;
 	`)
 	if err != nil {
 		t.Fatalf("create schema: %v", err)
@@ -457,11 +457,11 @@ func TestIntrospect_TableNamingConventions(t *testing.T) {
 	}
 
 	expectedTables := map[string]bool{
-		"users":               true,
-		"user_profiles":       true,
-		"user_2fa_tokens":     true,
-		"t":                   true,
-		"_internal_cache":     true,
+		"users":           true,
+		"user_profiles":   true,
+		"user_2fa_tokens": true,
+		"t":               true,
+		"_internal_cache": true,
 	}
 
 	foundTables := make(map[string]bool)

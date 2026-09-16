@@ -12,8 +12,10 @@ import (
 func TestConfigLoadErrors_MissingConfigFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// .dryft.yaml doesn't exist
 	app := NewApp()
@@ -28,8 +30,10 @@ func TestConfigLoadErrors_MissingConfigFile(t *testing.T) {
 func TestConfigLoadErrors_InvalidYAMLSyntax(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create invalid YAML
 	invalidYAML := `database:
@@ -53,8 +57,10 @@ schema:
 func TestConfigLoadErrors_MissingDatabaseURL(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Config without database URL
 	configContent := `database:
@@ -82,8 +88,10 @@ migration:
 func TestInitErrors_AlreadyInitialized(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Initialize once
 	app := NewApp()
@@ -101,8 +109,10 @@ func TestInitErrors_AlreadyInitialized(t *testing.T) {
 func TestDbPullErrors_InvalidDatabaseURL(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create config with invalid database URL
 	configContent := `database:
@@ -132,8 +142,10 @@ migration:
 func TestMigrationCreateErrors_NoSchemaFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create config but no schema file
 	configContent := `database:
@@ -162,8 +174,10 @@ migration:
 func TestMigrationCreateErrors_NoMigrationName(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create config and schema
 	configContent := `database:
@@ -209,8 +223,10 @@ model User {
 func TestMigrationCreateErrors_InvalidSchemaFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create config and schema
 	configContent := `database:
@@ -258,8 +274,10 @@ func TestFileSystemErrors_ReadOnlyDirectory(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create config
 	configContent := `database:
@@ -283,7 +301,7 @@ migration:
 	// Make directory read-only
 	err = os.Chmod("prisma", 0444)
 	require.NoError(t, err)
-	defer os.Chmod("prisma", 0755) // Restore for cleanup
+	defer func() { _ = os.Chmod("prisma", 0755) }() // Restore for cleanup
 
 	app := NewApp()
 	ctx := context.Background()
@@ -298,8 +316,10 @@ migration:
 func TestConfigErrors_EnvVarNotSet(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Config with env var that's not set
 	configContent := `database:
@@ -330,8 +350,10 @@ migration:
 func TestDbInspectErrors_InvalidDatabaseConnection(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create config with invalid database
 	configContent := `database:
@@ -359,8 +381,10 @@ migration:
 func TestValidateErrors_DirectoryInsteadOfFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create config
 	configContent := `database:
@@ -396,13 +420,15 @@ func TestInitErrors_PermissionDenied(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Make directory read-only to prevent file creation
 	err := os.Chmod(tmpDir, 0444)
 	require.NoError(t, err)
-	defer os.Chmod(tmpDir, 0755) // Restore for cleanup
+	defer func() { _ = os.Chmod(tmpDir, 0755) }() // Restore for cleanup
 
 	app := NewApp()
 	ctx := context.Background()
@@ -416,8 +442,10 @@ func TestInitErrors_PermissionDenied(t *testing.T) {
 func TestConfigErrors_MissingSchemaFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Config without schema file
 	configContent := `database:
@@ -442,8 +470,10 @@ migration:
 func TestMigrationCreateErrors_NoChanges(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create config
 	configContent := `database:
@@ -487,8 +517,10 @@ migration:
 func TestDbPullErrors_DestructiveSchemaFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldCwd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir: %v", err)
+	}
 
 	// Create config
 	configContent := `database:
@@ -525,7 +557,7 @@ model ExistingModel {
 	if os.Geteuid() != 0 {
 		err = os.Chmod("prisma/schema.prisma", 0444)
 		require.NoError(t, err)
-		defer os.Chmod("prisma/schema.prisma", 0644) // Restore for cleanup
+		defer func() { _ = os.Chmod("prisma/schema.prisma", 0644) }() // Restore for cleanup
 
 		app := NewApp()
 		ctx := context.Background()

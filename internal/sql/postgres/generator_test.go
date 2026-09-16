@@ -324,7 +324,7 @@ func TestQuoteIdentifier(t *testing.T) {
 		{"users", "users"},
 		{"User", `"User"`},
 		{"user_name", "user_name"},
-		{"user", `"user"`}, // Reserved word
+		{"user", `"user"`},   // Reserved word
 		{"table", `"table"`}, // Reserved word
 		{"My Table", `"My Table"`},
 	}

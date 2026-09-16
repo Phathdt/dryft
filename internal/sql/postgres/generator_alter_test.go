@@ -20,10 +20,10 @@ func TestGenerateAlterColumn(t *testing.T) {
 		{
 			name: "change type compatible",
 			op: diff.AlterColumn{
-				Table:      "users",
-				Column:     "age",
-				OldType:    schema.DataType{Kind: schema.TypeInt32},
-				NewType:    schema.DataType{Kind: schema.TypeInt64},
+				Table:       "users",
+				Column:      "age",
+				OldType:     schema.DataType{Kind: schema.TypeInt32},
+				NewType:     schema.DataType{Kind: schema.TypeInt64},
 				OldNullable: true,
 				NewNullable: true,
 			},

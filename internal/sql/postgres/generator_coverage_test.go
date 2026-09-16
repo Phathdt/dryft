@@ -15,8 +15,8 @@ func TestGenerate_AllOperationTypes(t *testing.T) {
 	gen := NewGenerator(sql.GeneratorOptions{})
 
 	tests := []struct {
-		name string
-		op   diff.Operation
+		name  string
+		op    diff.Operation
 		check func(t *testing.T, sql string)
 	}{
 		{
@@ -219,9 +219,9 @@ func TestGenerateReverse_AllOperationTypes(t *testing.T) {
 	gen := NewGenerator(sql.GeneratorOptions{})
 
 	tests := []struct {
-		name string
-		op   diff.Operation
-		checkSQL func(t *testing.T, sql string)
+		name         string
+		op           diff.Operation
+		checkSQL     func(t *testing.T, sql string)
 		checkWarning func(t *testing.T, warning string)
 	}{
 		{
@@ -354,15 +354,15 @@ func TestGenerateAddColumn_WithDefault(t *testing.T) {
 // TestMapDataType_WithArrayAndEnum tests complex type scenarios
 func TestMapDataType_WithArrayAndEnum(t *testing.T) {
 	tests := []struct {
-		name string
-		dt   schema.DataType
+		name     string
+		dt       schema.DataType
 		expected string
 	}{
 		{
 			name: "enum array",
 			dt: schema.DataType{
-				Kind:      schema.TypeEnum,
-				EnumName:  "status",
+				Kind:       schema.TypeEnum,
+				EnumName:   "status",
 				ArrayDepth: 1,
 			},
 			expected: "status[]",
@@ -388,8 +388,8 @@ func TestMapDataType_WithArrayAndEnum(t *testing.T) {
 // TestFormatColumnList_ReservedKeywords tests formatting with special column names
 func TestFormatColumnList_SpecialCases(t *testing.T) {
 	tests := []struct {
-		name string
-		cols []string
+		name  string
+		cols  []string
 		check func(t *testing.T, result string)
 	}{
 		{
@@ -428,19 +428,19 @@ func TestFormatColumnList_SpecialCases(t *testing.T) {
 // TestDefaultsEqual_ComplexCases tests defaultsEqual with complex scenarios
 func TestDefaultsEqual_ComplexCases(t *testing.T) {
 	tests := []struct {
-		name string
-		a    *schema.DefaultValue
-		b    *schema.DefaultValue
+		name     string
+		a        *schema.DefaultValue
+		b        *schema.DefaultValue
 		expected bool
 	}{
 		{
 			name: "both with sequence same name",
 			a: &schema.DefaultValue{
-				Kind: schema.DefaultSequence,
+				Kind:     schema.DefaultSequence,
 				Sequence: &schema.SequenceRef{Name: "seq"},
 			},
 			b: &schema.DefaultValue{
-				Kind: schema.DefaultSequence,
+				Kind:     schema.DefaultSequence,
 				Sequence: &schema.SequenceRef{Name: "seq"},
 			},
 			expected: true,
@@ -448,11 +448,11 @@ func TestDefaultsEqual_ComplexCases(t *testing.T) {
 		{
 			name: "both with sequence different name",
 			a: &schema.DefaultValue{
-				Kind: schema.DefaultSequence,
+				Kind:     schema.DefaultSequence,
 				Sequence: &schema.SequenceRef{Name: "seq1"},
 			},
 			b: &schema.DefaultValue{
-				Kind: schema.DefaultSequence,
+				Kind:     schema.DefaultSequence,
 				Sequence: &schema.SequenceRef{Name: "seq2"},
 			},
 			expected: true, // defaultsEqual only checks Kind, Literal, Expression — not Sequence

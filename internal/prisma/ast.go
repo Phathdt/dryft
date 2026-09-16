@@ -19,8 +19,8 @@ type Schema struct {
 	Declarations []Declaration
 }
 
-func (s *Schema) node()           {}
-func (s *Schema) Pos() Position   { return Position{Line: 1, Column: 1} }
+func (s *Schema) node()         {}
+func (s *Schema) Pos() Position { return Position{Line: 1, Column: 1} }
 
 // Declaration represents a top-level declaration (model, enum, datasource, generator).
 type Declaration interface {

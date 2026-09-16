@@ -8,9 +8,9 @@ import (
 
 func TestPlanner_Plan(t *testing.T) {
 	tests := []struct {
-		name        string
-		ops         []Operation
-		wantOrdered []OperationKind
+		name            string
+		ops             []Operation
+		wantOrdered     []OperationKind
 		wantDestructive int
 	}{
 		{

@@ -284,7 +284,7 @@ func TestRenameTable_Description(t *testing.T) {
 
 func TestAddColumn_Kind(t *testing.T) {
 	op := AddColumn{
-		Table: "users",
+		Table:  "users",
 		Column: schema.Column{Name: "email"},
 	}
 	if op.Kind() != OpAddColumn {
@@ -294,7 +294,7 @@ func TestAddColumn_Kind(t *testing.T) {
 
 func TestAddColumn_Description(t *testing.T) {
 	op := AddColumn{
-		Table: "users",
+		Table:  "users",
 		Column: schema.Column{Name: "email"},
 	}
 	desc := op.Description()

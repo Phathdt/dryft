@@ -2,11 +2,11 @@ package schema
 
 // Column represents a table column with its properties and constraints.
 type Column struct {
-	Name    string
-	Type    DataType
+	Name     string
+	Type     DataType
 	Nullable bool
-	Default *DefaultValue
-	Comment string
+	Default  *DefaultValue
+	Comment  string
 }
 
 // DataType represents the data type specification for a column.

@@ -27,18 +27,18 @@ const (
 	TokenView
 
 	// Delimiters
-	TokenLBrace    // {
-	TokenRBrace    // }
-	TokenLParen    // (
-	TokenRParen    // )
-	TokenLBracket  // [
-	TokenRBracket  // ]
-	TokenComma     // ,
-	TokenColon     // :
-	TokenEqual     // =
-	TokenQuestion  // ?
-	TokenAt        // @
-	TokenAtAt      // @@
+	TokenLBrace   // {
+	TokenRBrace   // }
+	TokenLParen   // (
+	TokenRParen   // )
+	TokenLBracket // [
+	TokenRBracket // ]
+	TokenComma    // ,
+	TokenColon    // :
+	TokenEqual    // =
+	TokenQuestion // ?
+	TokenAt       // @
+	TokenAtAt     // @@
 
 	// Built-in types
 	TokenString_   // String
@@ -53,41 +53,41 @@ const (
 )
 
 var tokenNames = map[TokenType]string{
-	TokenEOF:       "EOF",
-	TokenIllegal:   "ILLEGAL",
-	TokenComment:   "COMMENT",
-	TokenIdent:     "IDENT",
-	TokenString:    "STRING",
-	TokenNumber:    "NUMBER",
-	TokenTrue:      "true",
-	TokenFalse:     "false",
-	TokenModel:     "model",
-	TokenEnum:      "enum",
+	TokenEOF:         "EOF",
+	TokenIllegal:     "ILLEGAL",
+	TokenComment:     "COMMENT",
+	TokenIdent:       "IDENT",
+	TokenString:      "STRING",
+	TokenNumber:      "NUMBER",
+	TokenTrue:        "true",
+	TokenFalse:       "false",
+	TokenModel:       "model",
+	TokenEnum:        "enum",
 	TokenTypeKeyword: "type",
-	TokenDatasource: "datasource",
-	TokenGenerator: "generator",
-	TokenView:      "view",
-	TokenLBrace:    "{",
-	TokenRBrace:    "}",
-	TokenLParen:    "(",
-	TokenRParen:    ")",
-	TokenLBracket:  "[",
-	TokenRBracket:  "]",
-	TokenComma:     ",",
-	TokenColon:     ":",
-	TokenEqual:     "=",
-	TokenQuestion:  "?",
-	TokenAt:        "@",
-	TokenAtAt:      "@@",
-	TokenString_:   "String",
-	TokenInt_:      "Int",
-	TokenBigInt_:   "BigInt",
-	TokenFloat_:    "Float",
-	TokenDecimal_:  "Decimal",
-	TokenBoolean_:  "Boolean",
-	TokenDateTime_: "DateTime",
-	TokenJson_:     "Json",
-	TokenBytes_:    "Bytes",
+	TokenDatasource:  "datasource",
+	TokenGenerator:   "generator",
+	TokenView:        "view",
+	TokenLBrace:      "{",
+	TokenRBrace:      "}",
+	TokenLParen:      "(",
+	TokenRParen:      ")",
+	TokenLBracket:    "[",
+	TokenRBracket:    "]",
+	TokenComma:       ",",
+	TokenColon:       ":",
+	TokenEqual:       "=",
+	TokenQuestion:    "?",
+	TokenAt:          "@",
+	TokenAtAt:        "@@",
+	TokenString_:     "String",
+	TokenInt_:        "Int",
+	TokenBigInt_:     "BigInt",
+	TokenFloat_:      "Float",
+	TokenDecimal_:    "Decimal",
+	TokenBoolean_:    "Boolean",
+	TokenDateTime_:   "DateTime",
+	TokenJson_:       "Json",
+	TokenBytes_:      "Bytes",
 }
 
 func (t TokenType) String() string {

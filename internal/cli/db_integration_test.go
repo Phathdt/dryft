@@ -23,8 +23,14 @@ func TestCmdDbPull_Integration_EmptyDatabase(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() {
+		if err := os.Chdir(oldCwd); err != nil {
+			t.Logf("warning: failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change to temp directory: %v", err)
+	}
 
 	// Create valid config
 	configContent := `database:
@@ -82,8 +88,14 @@ func TestCmdDbPull_Integration_WithTables(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() {
+		if err := os.Chdir(oldCwd); err != nil {
+			t.Logf("warning: failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change to temp directory: %v", err)
+	}
 
 	// Create valid config
 	configContent := `database:
@@ -147,8 +159,14 @@ func TestCmdDbPull_Integration_WithEnums(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() {
+		if err := os.Chdir(oldCwd); err != nil {
+			t.Logf("warning: failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change to temp directory: %v", err)
+	}
 
 	// Create valid config
 	configContent := `database:
@@ -211,8 +229,14 @@ func TestCmdDbPull_Integration_WithConstraints(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() {
+		if err := os.Chdir(oldCwd); err != nil {
+			t.Logf("warning: failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change to temp directory: %v", err)
+	}
 
 	// Create valid config
 	configContent := `database:
@@ -260,8 +284,14 @@ func TestCmdDbInspect_Integration_EmptyDatabase(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() {
+		if err := os.Chdir(oldCwd); err != nil {
+			t.Logf("warning: failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change to temp directory: %v", err)
+	}
 
 	// Create valid config
 	configContent := `database:
@@ -292,7 +322,7 @@ migration:
 
 	err = app.Run(ctx, []string{"dryft", "db", "inspect"})
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	// Read output
@@ -323,8 +353,14 @@ func TestCmdDbInspect_Integration_WithTables(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() {
+		if err := os.Chdir(oldCwd); err != nil {
+			t.Logf("warning: failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change to temp directory: %v", err)
+	}
 
 	// Create valid config
 	configContent := `database:
@@ -355,7 +391,7 @@ migration:
 
 	err = app.Run(ctx, []string{"dryft", "db", "inspect"})
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	// Read output
@@ -378,8 +414,14 @@ func TestCmdDbPull_Integration_DirectoryCreation(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() {
+		if err := os.Chdir(oldCwd); err != nil {
+			t.Logf("warning: failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change to temp directory: %v", err)
+	}
 
 	// Create valid config with nested schema path
 	configContent := `database:
@@ -429,8 +471,14 @@ func TestCmdDbPull_OutputFormat(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() {
+		if err := os.Chdir(oldCwd); err != nil {
+			t.Logf("warning: failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change to temp directory: %v", err)
+	}
 
 	// Create valid config
 	configContent := `database:
@@ -461,7 +509,7 @@ migration:
 
 	err = app.Run(ctx, []string{"dryft", "db", "pull"})
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	// Read output
@@ -495,8 +543,14 @@ func TestCmdDbInspect_OutputFormat(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
-	defer os.Chdir(oldCwd)
-	os.Chdir(tmpDir)
+	defer func() {
+		if err := os.Chdir(oldCwd); err != nil {
+			t.Logf("warning: failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change to temp directory: %v", err)
+	}
 
 	// Create valid config
 	configContent := `database:

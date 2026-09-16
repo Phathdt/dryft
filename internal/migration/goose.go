@@ -69,7 +69,7 @@ func sanitizeName(name string) string {
 	var result strings.Builder
 	for _, ch := range name {
 		if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-		   (ch >= '0' && ch <= '9') || ch == '_' {
+			(ch >= '0' && ch <= '9') || ch == '_' {
 			result.WriteRune(ch)
 		}
 	}

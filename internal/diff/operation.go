@@ -91,7 +91,7 @@ type CreateTable struct {
 	Table schema.Table
 }
 
-func (op CreateTable) Kind() OperationKind        { return OpCreateTable }
+func (op CreateTable) Kind() OperationKind             { return OpCreateTable }
 func (op CreateTable) IsDestructive() DestructiveLevel { return Safe }
 func (op CreateTable) Description() string {
 	return "CREATE TABLE " + op.Table.Name
@@ -102,7 +102,7 @@ type DropTable struct {
 	Name string
 }
 
-func (op DropTable) Kind() OperationKind        { return OpDropTable }
+func (op DropTable) Kind() OperationKind             { return OpDropTable }
 func (op DropTable) IsDestructive() DestructiveLevel { return Destructive }
 func (op DropTable) Description() string {
 	return "DROP TABLE " + op.Name
@@ -114,7 +114,7 @@ type RenameTable struct {
 	To   string
 }
 
-func (op RenameTable) Kind() OperationKind        { return OpRenameTable }
+func (op RenameTable) Kind() OperationKind             { return OpRenameTable }
 func (op RenameTable) IsDestructive() DestructiveLevel { return PotentiallyDestructive }
 func (op RenameTable) Description() string {
 	return "RENAME TABLE " + op.From + " TO " + op.To
@@ -144,7 +144,7 @@ type DropColumn struct {
 	Column string
 }
 
-func (op DropColumn) Kind() OperationKind        { return OpDropColumn }
+func (op DropColumn) Kind() OperationKind             { return OpDropColumn }
 func (op DropColumn) IsDestructive() DestructiveLevel { return Destructive }
 func (op DropColumn) Description() string {
 	return "DROP COLUMN " + op.Table + "." + op.Column
@@ -157,7 +157,7 @@ type RenameColumn struct {
 	To    string
 }
 
-func (op RenameColumn) Kind() OperationKind        { return OpRenameColumn }
+func (op RenameColumn) Kind() OperationKind             { return OpRenameColumn }
 func (op RenameColumn) IsDestructive() DestructiveLevel { return PotentiallyDestructive }
 func (op RenameColumn) Description() string {
 	return "RENAME COLUMN " + op.Table + "." + op.From + " TO " + op.To
@@ -165,14 +165,14 @@ func (op RenameColumn) Description() string {
 
 // AlterColumn modifies column properties.
 type AlterColumn struct {
-	Table      string
-	Column     string
-	OldType    schema.DataType
-	NewType    schema.DataType
+	Table       string
+	Column      string
+	OldType     schema.DataType
+	NewType     schema.DataType
 	OldNullable bool
 	NewNullable bool
-	OldDefault *schema.DefaultValue
-	NewDefault *schema.DefaultValue
+	OldDefault  *schema.DefaultValue
+	NewDefault  *schema.DefaultValue
 }
 
 func (op AlterColumn) Kind() OperationKind { return OpAlterColumn }
@@ -212,7 +212,7 @@ type DropIndex struct {
 	Name  string
 }
 
-func (op DropIndex) Kind() OperationKind        { return OpDropIndex }
+func (op DropIndex) Kind() OperationKind             { return OpDropIndex }
 func (op DropIndex) IsDestructive() DestructiveLevel { return PotentiallyDestructive }
 func (op DropIndex) Description() string {
 	return "DROP INDEX " + op.Name
@@ -239,7 +239,7 @@ type DropForeignKey struct {
 	Name  string
 }
 
-func (op DropForeignKey) Kind() OperationKind        { return OpDropForeignKey }
+func (op DropForeignKey) Kind() OperationKind             { return OpDropForeignKey }
 func (op DropForeignKey) IsDestructive() DestructiveLevel { return Safe }
 func (op DropForeignKey) Description() string {
 	return "DROP FOREIGN KEY " + op.Name
@@ -250,7 +250,7 @@ type CreateEnum struct {
 	Enum schema.Enum
 }
 
-func (op CreateEnum) Kind() OperationKind        { return OpCreateEnum }
+func (op CreateEnum) Kind() OperationKind             { return OpCreateEnum }
 func (op CreateEnum) IsDestructive() DestructiveLevel { return Safe }
 func (op CreateEnum) Description() string {
 	return "CREATE ENUM " + op.Enum.Name

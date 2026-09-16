@@ -236,9 +236,9 @@ func TestMapDataType_NumericWithPrecisionAndScale(t *testing.T) {
 
 func TestMapDataType_SingleArray(t *testing.T) {
 	tests := []struct {
-		name        string
-		dt          schema.DataType
-		expected    string
+		name     string
+		dt       schema.DataType
+		expected string
 	}{
 		{"text[]", schema.DataType{Kind: schema.TypeText, ArrayDepth: 1}, "TEXT[]"},
 		{"int32[]", schema.DataType{Kind: schema.TypeInt32, ArrayDepth: 1}, "INTEGER[]"},
@@ -255,9 +255,9 @@ func TestMapDataType_SingleArray(t *testing.T) {
 
 func TestMapDataType_MultiDimensionalArray(t *testing.T) {
 	tests := []struct {
-		name        string
-		arrayDepth  int
-		expected    string
+		name       string
+		arrayDepth int
+		expected   string
 	}{
 		{"2D array", 2, "TEXT[][]"},
 		{"3D array", 3, "TEXT[][][]"},

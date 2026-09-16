@@ -249,4 +249,3 @@ func prismaReferentialAction(action schema.ReferentialAction) string {
 		return ""
 	}
 }
-

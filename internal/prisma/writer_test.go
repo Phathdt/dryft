@@ -612,9 +612,9 @@ func TestWriter_ReservedModelNames(t *testing.T) {
 	writer := NewWriter(DefaultNamingConvention())
 
 	tests := []struct {
-		name          string
-		tableName     string
-		expectError   bool
+		name        string
+		tableName   string
+		expectError bool
 	}{
 		{
 			name:        "reserved word model",
