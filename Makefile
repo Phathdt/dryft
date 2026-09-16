@@ -20,7 +20,12 @@ help:
 build:
 	@echo "Building dryft..."
 	@mkdir -p bin
-	@go build -o bin/dryft ./cmd/dryft
+	@go build -ldflags="\
+		-X 'github.com/phathdt/dryft/internal/cli.Version=$(shell git describe --tags --always --dirty 2>/dev/null || echo dev)' \
+		-X 'github.com/phathdt/dryft/internal/cli.Commit=$(shell git rev-parse HEAD 2>/dev/null || echo unknown)' \
+		-X 'github.com/phathdt/dryft/internal/cli.BuildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)' \
+		-X 'github.com/phathdt/dryft/internal/cli.Arch=$(shell go env GOARCH)'" \
+		-o bin/dryft ./cmd/dryft
 	@echo "✓ Built: ./bin/dryft"
 
 # Install to GOPATH/bin
