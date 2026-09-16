@@ -607,3 +607,232 @@ func TestWriter_ParseTypeAnnotation(t *testing.T) {
 		})
 	}
 }
+
+func TestWriter_ReservedModelNames(t *testing.T) {
+	writer := NewWriter(DefaultNamingConvention())
+
+	tests := []struct {
+		name          string
+		tableName     string
+		expectError   bool
+	}{
+		{
+			name:        "reserved word model",
+			tableName:   "model",
+			expectError: true,
+		},
+		{
+			name:        "reserved word enum",
+			tableName:   "enum",
+			expectError: true,
+		},
+		{
+			name:        "reserved word type",
+			tableName:   "type",
+			expectError: true,
+		},
+		{
+			name:        "normal table name",
+			tableName:   "users",
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			schema := &schema.Schema{
+				Tables: []schema.Table{
+					{
+						Name: tt.tableName,
+						Columns: []schema.Column{
+							{Name: "id", Type: schema.DataType{Kind: schema.TypeInt32}, Nullable: false},
+						},
+						PrimaryKey: &schema.PrimaryKey{Columns: []string{"id"}},
+					},
+				},
+			}
+
+			_, err := writer.Write(schema)
+			if (err != nil) != tt.expectError {
+				t.Errorf("expected error=%v, got error=%v", tt.expectError, err != nil)
+			}
+		})
+	}
+}
+
+func TestWriter_ReservedFieldNames(t *testing.T) {
+	writer := NewWriter(DefaultNamingConvention())
+
+	schema := &schema.Schema{
+		Tables: []schema.Table{
+			{
+				Name: "users",
+				Columns: []schema.Column{
+					{Name: "id", Type: schema.DataType{Kind: schema.TypeInt32}, Nullable: false},
+					{Name: "type", Type: schema.DataType{Kind: schema.TypeText}, Nullable: true},
+					{Name: "model", Type: schema.DataType{Kind: schema.TypeText}, Nullable: true},
+				},
+				PrimaryKey: &schema.PrimaryKey{Columns: []string{"id"}},
+			},
+		},
+	}
+
+	result, err := writer.Write(schema)
+	if err != nil {
+		t.Errorf("Write() should not error for field names: %v", err)
+	}
+
+	// Prisma doesn't reserve field names - they should be generated normally
+	if !strings.Contains(result, "type") {
+		t.Error("Expected 'type' field in output")
+	}
+	if !strings.Contains(result, "model") {
+		t.Error("Expected 'model' field in output")
+	}
+}
+
+func TestWriter_CollisionDetection(t *testing.T) {
+	writer := NewWriter(DefaultNamingConvention())
+
+	// Two distinct column names that transform to the same field name
+	schema := &schema.Schema{
+		Tables: []schema.Table{
+			{
+				Name: "users",
+				Columns: []schema.Column{
+					{Name: "id", Type: schema.DataType{Kind: schema.TypeInt32}, Nullable: false},
+					{Name: "user_id", Type: schema.DataType{Kind: schema.TypeInt32}, Nullable: true},
+					{Name: "user__id", Type: schema.DataType{Kind: schema.TypeInt32}, Nullable: true},
+				},
+				PrimaryKey: &schema.PrimaryKey{Columns: []string{"id"}},
+			},
+		},
+	}
+
+	_, err := writer.Write(schema)
+	if err == nil {
+		t.Error("Expected error for field name collision, got nil")
+	}
+}
+
+func TestWriter_WriteTableWithDefaultValues(t *testing.T) {
+	writer := NewWriter(DefaultNamingConvention())
+
+	table := &schema.Table{
+		Name: "posts",
+		Columns: []schema.Column{
+			{
+				Name:     "id",
+				Type:     schema.DataType{Kind: schema.TypeInt32},
+				Nullable: false,
+			},
+			{
+				Name:     "published",
+				Type:     schema.DataType{Kind: schema.TypeBool},
+				Nullable: false,
+				Default:  &schema.DefaultValue{Kind: schema.DefaultLiteral, Literal: "false"},
+			},
+			{
+				Name:     "created_at",
+				Type:     schema.DataType{Kind: schema.TypeTimestampTZ},
+				Nullable: false,
+				Default:  &schema.DefaultValue{Kind: schema.DefaultExpression, Expression: "now()"},
+			},
+			{
+				Name:     "views",
+				Type:     schema.DataType{Kind: schema.TypeInt32},
+				Nullable: false,
+				Default:  &schema.DefaultValue{Kind: schema.DefaultLiteral, Literal: "0"},
+			},
+		},
+		PrimaryKey: &schema.PrimaryKey{Columns: []string{"id"}},
+	}
+
+	result, err := writer.writeTable(table, nil)
+	if err != nil {
+		t.Fatalf("writeTable() failed: %v", err)
+	}
+
+	if !strings.Contains(result, "@default(false)") {
+		t.Error("Expected @default(false) for published field")
+	}
+	if !strings.Contains(result, "@default(now())") {
+		t.Error("Expected @default(now()) for created_at field")
+	}
+	if !strings.Contains(result, "@default(0)") {
+		t.Error("Expected @default(0) for views field")
+	}
+}
+
+func TestWriter_UpdatedAtField(t *testing.T) {
+	writer := NewWriter(DefaultNamingConvention())
+
+	tests := []struct {
+		name        string
+		columnName  string
+		expectUpdAt bool
+	}{
+		{
+			name:        "updated_at",
+			columnName:  "updated_at",
+			expectUpdAt: true,
+		},
+		{
+			name:        "updatedat",
+			columnName:  "updatedat",
+			expectUpdAt: true,
+		},
+		{
+			name:        "modified_at",
+			columnName:  "modified_at",
+			expectUpdAt: true,
+		},
+		{
+			name:        "created_at",
+			columnName:  "created_at",
+			expectUpdAt: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := writer.isUpdatedAtField(tt.columnName)
+			if result != tt.expectUpdAt {
+				t.Errorf("expected %v, got %v", tt.expectUpdAt, result)
+			}
+		})
+	}
+}
+
+func TestWriter_IsUniqueColumn(t *testing.T) {
+	writer := NewWriter(DefaultNamingConvention())
+
+	table := &schema.Table{
+		Name: "users",
+		Columns: []schema.Column{
+			{Name: "id", Type: schema.DataType{Kind: schema.TypeInt32}},
+			{Name: "email", Type: schema.DataType{Kind: schema.TypeText}},
+		},
+		Constraints: []schema.Constraint{
+			{Type: schema.ConstraintUnique, Columns: []string{"email"}},
+		},
+	}
+
+	tests := []struct {
+		name       string
+		columnName string
+		expect     bool
+	}{
+		{"email is unique", "email", true},
+		{"id is not unique", "id", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := writer.isUniqueColumn(tt.columnName, table)
+			if result != tt.expect {
+				t.Errorf("expected %v, got %v", tt.expect, result)
+			}
+		})
+	}
+}

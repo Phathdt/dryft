@@ -160,12 +160,9 @@ func TestDependencyGraph_AddNode(t *testing.T) {
 		t.Errorf("expected 1 node, got %d", len(graph.nodes))
 	}
 
-	node, exists := graph.nodes["op_1"]
-	if !exists {
+	if node, exists := graph.nodes["op_1"]; !exists {
 		t.Errorf("node op_1 not found")
-	}
-
-	if node.Operation.Kind() != OpCreateTable {
+	} else if node.Operation.Kind() != OpCreateTable {
 		t.Errorf("expected OpCreateTable, got %v", node.Operation.Kind())
 	}
 }
@@ -203,5 +200,77 @@ func TestDependencyGraph_TopologicalSort(t *testing.T) {
 		if sorted[i].Kind() != expected {
 			t.Errorf("operation[%d]: got %v, want %v", i, sorted[i].Kind(), expected)
 		}
+	}
+}
+
+func TestDependencyGraph_AddEdge(t *testing.T) {
+	graph := NewDependencyGraph()
+
+	op1 := CreateEnum{Enum: schema.Enum{Name: "status"}}
+	op2 := CreateTable{Table: schema.Table{Name: "users"}}
+
+	graph.AddNode("op_1", op1)
+	graph.AddNode("op_2", op2)
+
+	// Add edge from op_2 (depends on) to op_1
+	graph.AddEdge("op_2", "op_1")
+
+	// Verify edge was added
+	if node, exists := graph.nodes["op_2"]; exists {
+		if len(node.DependsOn) != 1 {
+			t.Errorf("expected 1 dependency, got %d", len(node.DependsOn))
+		}
+		if node.DependsOn[0] != "op_1" {
+			t.Errorf("expected dependency on op_1, got %v", node.DependsOn[0])
+		}
+	} else {
+		t.Errorf("node op_2 not found")
+	}
+
+	// Verify other node has no dependencies
+	if node, exists := graph.nodes["op_1"]; exists {
+		if len(node.DependsOn) != 0 {
+			t.Errorf("expected 0 dependencies for op_1, got %d", len(node.DependsOn))
+		}
+	}
+}
+
+func TestDependencyGraph_AddEdge_NonexistentNode(t *testing.T) {
+	graph := NewDependencyGraph()
+
+	op1 := CreateEnum{Enum: schema.Enum{Name: "status"}}
+	graph.AddNode("op_1", op1)
+
+	// Add edge from non-existent node (should not panic, just skip)
+	graph.AddEdge("op_999", "op_1")
+
+	// Should have no effect
+	if _, exists := graph.nodes["op_999"]; exists {
+		t.Errorf("expected node op_999 to not exist")
+	}
+}
+
+func TestDependencyGraph_AddEdge_Multiple(t *testing.T) {
+	graph := NewDependencyGraph()
+
+	op1 := CreateEnum{Enum: schema.Enum{Name: "status"}}
+	op2 := CreateTable{Table: schema.Table{Name: "users"}}
+	op3 := CreateIndex{Table: "users"}
+
+	graph.AddNode("op_1", op1)
+	graph.AddNode("op_2", op2)
+	graph.AddNode("op_3", op3)
+
+	// Add multiple edges to op_3
+	graph.AddEdge("op_3", "op_1")
+	graph.AddEdge("op_3", "op_2")
+
+	// Verify multiple dependencies
+	if node, exists := graph.nodes["op_3"]; exists {
+		if len(node.DependsOn) != 2 {
+			t.Errorf("expected 2 dependencies, got %d", len(node.DependsOn))
+		}
+	} else {
+		t.Errorf("node op_3 not found")
 	}
 }

@@ -515,3 +515,71 @@ func TestNormalizeExpression(t *testing.T) {
 		})
 	}
 }
+
+func TestDiffer_SequenceRefsEqual(t *testing.T) {
+	d := NewDiffer(nil)
+
+	tests := []struct {
+		name string
+		a    *schema.SequenceRef
+		b    *schema.SequenceRef
+		want bool
+	}{
+		{
+			name: "both nil",
+			a:    nil,
+			b:    nil,
+			want: true,
+		},
+		{
+			name: "first nil second not nil",
+			a:    nil,
+			b:    &schema.SequenceRef{Name: "seq1", Owned: false},
+			want: false,
+		},
+		{
+			name: "first not nil second nil",
+			a:    &schema.SequenceRef{Name: "seq1", Owned: false},
+			b:    nil,
+			want: false,
+		},
+		{
+			name: "same sequence unowned",
+			a:    &schema.SequenceRef{Name: "seq1", Owned: false},
+			b:    &schema.SequenceRef{Name: "seq1", Owned: false},
+			want: true,
+		},
+		{
+			name: "same sequence owned",
+			a:    &schema.SequenceRef{Name: "seq1", Owned: true},
+			b:    &schema.SequenceRef{Name: "seq1", Owned: true},
+			want: true,
+		},
+		{
+			name: "different sequence names",
+			a:    &schema.SequenceRef{Name: "seq1", Owned: false},
+			b:    &schema.SequenceRef{Name: "seq2", Owned: false},
+			want: false,
+		},
+		{
+			name: "same name different owned",
+			a:    &schema.SequenceRef{Name: "seq1", Owned: true},
+			b:    &schema.SequenceRef{Name: "seq1", Owned: false},
+			want: false,
+		},
+		{
+			name: "empty sequence names",
+			a:    &schema.SequenceRef{Name: "", Owned: false},
+			b:    &schema.SequenceRef{Name: "", Owned: false},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := d.sequenceRefsEqual(tt.a, tt.b); got != tt.want {
+				t.Errorf("sequenceRefsEqual() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

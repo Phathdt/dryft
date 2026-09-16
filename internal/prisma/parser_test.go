@@ -374,3 +374,252 @@ func TestParser_ErrorHandling(t *testing.T) {
 		})
 	}
 }
+
+func TestParser_ComplexRelationSchema(t *testing.T) {
+	input := `
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Users {
+  id    String   @id @default(uuid())
+  email String   @unique
+  role  Role     @default(USER)
+  posts Posts[]
+  profile Profiles?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@map("users")
+}
+
+model Posts {
+  id        String   @id @default(uuid())
+  authorId  String
+  author    Users    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title     String
+  content   String?
+  published Boolean  @default(false)
+
+  @@index([authorId])
+  @@map("posts")
+}
+
+model Profiles {
+  id      String @id @default(uuid())
+  userId  String @unique
+  user    Users  @relation(fields: [userId], references: [id])
+  bio     String?
+
+  @@map("profiles")
+}
+
+enum Role {
+  ADMIN
+  USER
+  GUEST
+}
+`
+
+	parser := NewParser(input)
+	schema, err := parser.ParseSchema()
+
+	if err != nil {
+		t.Fatalf("parser error: %v", err)
+	}
+
+	// Should have multiple declarations: 2 generators/datasources + 3 models + 1 enum
+	if len(schema.Declarations) < 6 {
+		t.Fatalf("expected at least 6 declarations, got %d", len(schema.Declarations))
+	}
+
+	// Find models
+	var usersModel, postsModel, profilesModel *ModelDeclaration
+	var roleEnum *EnumDeclaration
+	for _, decl := range schema.Declarations {
+		if m, ok := decl.(*ModelDeclaration); ok {
+			switch m.Name {
+			case "Users":
+				usersModel = m
+			case "Posts":
+				postsModel = m
+			case "Profiles":
+				profilesModel = m
+			}
+		}
+		if e, ok := decl.(*EnumDeclaration); ok {
+			if e.Name == "Role" {
+				roleEnum = e
+			}
+		}
+	}
+
+	if usersModel == nil {
+		t.Error("expected Users model")
+	}
+	if postsModel == nil {
+		t.Error("expected Posts model")
+	}
+	if profilesModel == nil {
+		t.Error("expected Profiles model")
+	}
+	if roleEnum == nil {
+		t.Error("expected Role enum")
+	}
+
+	// Verify model attributes
+	if usersModel != nil && len(usersModel.Attributes) < 1 {
+		t.Error("expected model attributes on Users")
+	}
+}
+
+func TestParser_ListAndOptionalFields(t *testing.T) {
+	input := `
+model Test {
+  id       String
+  items    String[]
+  optional String?
+  both     String[]?
+}
+`
+
+	parser := NewParser(input)
+	schema, err := parser.ParseSchema()
+
+	if err != nil {
+		t.Fatalf("parser error: %v", err)
+	}
+
+	model := schema.Declarations[0].(*ModelDeclaration)
+
+	tests := []struct {
+		fieldIdx  int
+		fieldName string
+		isList    bool
+		isOpt     bool
+	}{
+		{0, "id", false, false},
+		{1, "items", true, false},
+		{2, "optional", false, true},
+		{3, "both", true, true},
+	}
+
+	for _, tt := range tests {
+		field := model.Fields[tt.fieldIdx]
+		if field.Name != tt.fieldName {
+			t.Errorf("field %d: expected name %q, got %q", tt.fieldIdx, tt.fieldName, field.Name)
+		}
+		if field.Type.List != tt.isList {
+			t.Errorf("field %q: expected list %v, got %v", tt.fieldName, tt.isList, field.Type.List)
+		}
+		if field.Type.Optional != tt.isOpt {
+			t.Errorf("field %q: expected optional %v, got %v", tt.fieldName, tt.isOpt, field.Type.Optional)
+		}
+	}
+}
+
+func TestParser_CompositeConstraints(t *testing.T) {
+	input := `
+model Order {
+  id       String   @id
+  userId   String
+  productId String
+  quantity Int
+
+  @@unique([userId, productId])
+  @@index([userId, productId])
+}
+`
+
+	parser := NewParser(input)
+	schema, err := parser.ParseSchema()
+
+	if err != nil {
+		t.Fatalf("parser error: %v", err)
+	}
+
+	model := schema.Declarations[0].(*ModelDeclaration)
+
+	// Should have @@unique and @@index
+	if len(model.Attributes) < 2 {
+		t.Fatalf("expected at least 2 model attributes, got %d", len(model.Attributes))
+	}
+
+	// Check for unique constraint
+	hasUnique := false
+	hasIndex := false
+	for _, attr := range model.Attributes {
+		if attr.Name == "unique" {
+			hasUnique = true
+		}
+		if attr.Name == "index" {
+			hasIndex = true
+		}
+	}
+
+	if !hasUnique {
+		t.Error("expected @@unique attribute")
+	}
+	if !hasIndex {
+		t.Error("expected @@index attribute")
+	}
+}
+
+func TestParser_RelationWithArguments(t *testing.T) {
+	input := `
+model Post {
+  id       String   @id
+  authorId String
+  author   User     @relation("author")
+}
+
+model User {
+  id    String @id
+  posts Post[]
+}
+`
+
+	parser := NewParser(input)
+	schema, err := parser.ParseSchema()
+
+	if err != nil {
+		t.Fatalf("parser error: %v", err)
+	}
+
+	if len(schema.Declarations) < 2 {
+		t.Fatalf("expected at least 2 declarations, got %d", len(schema.Declarations))
+	}
+
+	postModel := schema.Declarations[0].(*ModelDeclaration)
+
+	// Find author field (may not be at index 1 depending on parsing)
+	var authorField *Field
+	for i := range postModel.Fields {
+		if postModel.Fields[i].Name == "author" {
+			authorField = &postModel.Fields[i]
+			break
+		}
+	}
+
+	if authorField == nil {
+		t.Fatal("author field not found")
+	}
+
+	// Should have @relation attribute
+	hasRelation := false
+	for _, attr := range authorField.Attributes {
+		if attr.Name == "relation" {
+			hasRelation = true
+		}
+	}
+
+	if !hasRelation {
+		t.Error("expected @relation attribute on author field")
+	}
+}

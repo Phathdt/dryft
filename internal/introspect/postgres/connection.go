@@ -85,14 +85,17 @@ func classifyConnectionError(err error) error {
 
 	errMsg := err.Error()
 
-	// Authentication failures
-	if containsAny(errMsg, "password authentication failed", "role", "does not exist") {
-		return fmt.Errorf("authentication failed: check username/password")
+	// Database not found (check before general "does not exist")
+	if containsAny(errMsg, "database") && containsAny(errMsg, "does not exist") {
+		return fmt.Errorf("database does not exist")
 	}
 
-	// Database not found
-	if containsAny(errMsg, "database", "does not exist") {
-		return fmt.Errorf("database does not exist")
+	// Authentication failures
+	if containsAny(errMsg, "password authentication failed") {
+		return fmt.Errorf("authentication failed: check username/password")
+	}
+	if containsAny(errMsg, "role") && containsAny(errMsg, "does not exist") {
+		return fmt.Errorf("authentication failed: check username/password")
 	}
 
 	// Permission denied

@@ -432,3 +432,156 @@ enum Status {
 		t.Error("expected to find enum keyword")
 	}
 }
+
+func TestLexer_SpecialCharactersInStrings(t *testing.T) {
+	input := `"with-dash" "with.dot" "with_underscore" "with-123-mix"`
+
+	tests := []struct {
+		expectedType    TokenType
+		expectedLiteral string
+	}{
+		{TokenString, "with-dash"},
+		{TokenString, "with.dot"},
+		{TokenString, "with_underscore"},
+		{TokenString, "with-123-mix"},
+		{TokenEOF, ""},
+	}
+
+	l := NewLexer(input)
+
+	for i, tt := range tests {
+		tok := l.NextToken()
+
+		if tok.Type != tt.expectedType {
+			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q",
+				i, tt.expectedType, tok.Type)
+		}
+
+		if tok.Literal != tt.expectedLiteral {
+			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q",
+				i, tt.expectedLiteral, tok.Literal)
+		}
+	}
+}
+
+func TestLexer_EmptyString(t *testing.T) {
+	input := `""`
+
+	l := NewLexer(input)
+	tok := l.NextToken()
+
+	if tok.Type != TokenString {
+		t.Errorf("expected TokenString, got %q", tok.Type)
+	}
+
+	if tok.Literal != "" {
+		t.Errorf("expected empty literal, got %q", tok.Literal)
+	}
+}
+
+func TestLexer_NumberVariations(t *testing.T) {
+	input := `0 42 3.14 100000 -50`
+
+	tests := []struct {
+		expectedType    TokenType
+		expectedLiteral string
+	}{
+		{TokenNumber, "0"},
+		{TokenNumber, "42"},
+		{TokenNumber, "3.14"},
+		{TokenNumber, "100000"},
+		{TokenNumber, "-50"},
+		{TokenEOF, ""},
+	}
+
+	l := NewLexer(input)
+
+	for i, tt := range tests {
+		tok := l.NextToken()
+
+		if tok.Type != tt.expectedType {
+			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q",
+				i, tt.expectedType, tok.Type)
+		}
+
+		if tok.Literal != tt.expectedLiteral {
+			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q",
+				i, tt.expectedLiteral, tok.Literal)
+		}
+	}
+}
+
+func TestLexer_RelationAttribute(t *testing.T) {
+	input := `@relation(fields: [authorId], references: [id])`
+
+	tests := []struct {
+		expectedType    TokenType
+		expectedLiteral string
+	}{
+		{TokenAt, "@"},
+		{TokenIdent, "relation"},
+		{TokenLParen, "("},
+		{TokenIdent, "fields"},
+		{TokenColon, ":"},
+		{TokenLBracket, "["},
+		{TokenIdent, "authorId"},
+		{TokenRBracket, "]"},
+		{TokenComma, ","},
+		{TokenIdent, "references"},
+		{TokenColon, ":"},
+		{TokenLBracket, "["},
+		{TokenIdent, "id"},
+		{TokenRBracket, "]"},
+		{TokenRParen, ")"},
+		{TokenEOF, ""},
+	}
+
+	l := NewLexer(input)
+
+	for i, tt := range tests {
+		tok := l.NextToken()
+
+		if tok.Type != tt.expectedType {
+			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q",
+				i, tt.expectedType, tok.Type)
+		}
+
+		if tok.Literal != tt.expectedLiteral {
+			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q",
+				i, tt.expectedLiteral, tok.Literal)
+		}
+	}
+}
+
+func TestLexer_DoubleAtSymbol(t *testing.T) {
+	input := `@@map @@index @@unique`
+
+	tests := []struct {
+		expectedType    TokenType
+		expectedLiteral string
+	}{
+		{TokenAtAt, "@@"},
+		{TokenIdent, "map"},
+		{TokenAtAt, "@@"},
+		{TokenIdent, "index"},
+		{TokenAtAt, "@@"},
+		{TokenIdent, "unique"},
+		{TokenEOF, ""},
+	}
+
+	l := NewLexer(input)
+
+	for i, tt := range tests {
+		tok := l.NextToken()
+
+		if tok.Type != tt.expectedType {
+			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q",
+				i, tt.expectedType, tok.Type)
+		}
+
+		if tok.Literal != tt.expectedLiteral {
+			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q",
+				i, tt.expectedLiteral, tok.Literal)
+		}
+	}
+}
