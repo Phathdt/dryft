@@ -8,7 +8,6 @@ import (
 
 	"github.com/phathdt/dryft/internal/config"
 	"github.com/phathdt/dryft/internal/diff"
-	introspectpostgres "github.com/phathdt/dryft/internal/introspect/postgres"
 	"github.com/phathdt/dryft/internal/migration"
 	"github.com/phathdt/dryft/internal/prisma"
 	"github.com/phathdt/dryft/internal/schema"
@@ -25,7 +24,7 @@ func MigrationCommand() *cli.Command {
 		Commands: []*cli.Command{
 			{
 				Name:      "create",
-				Usage:     "Generate Goose migration from schema diff",
+				Usage:     "Generate Goose migration from schema diff (100% offline)",
 				ArgsUsage: "<name>",
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
@@ -91,10 +90,8 @@ func migrationCreateAction(_ context.Context, cmd *cli.Command) error {
 		fmt.Println()
 	}
 
-	// 5. Load previous schema state from database introspection
-	// This ensures we generate incremental migrations (ALTER) instead of recreating everything
-	ctx := context.Background()
-	previousSchema, err := introspectDatabase(ctx, cfg)
+	// 5. Load previous schema state from migration history (100% offline)
+	previousSchema, err := loadPreviousSchemaFromMigrations(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to load previous schema state: %w", err)
 	}
@@ -180,42 +177,56 @@ func migrationCreateAction(_ context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-// introspectDatabase loads the current database schema.
-// Returns an empty schema if the database is empty or connection fails.
-func introspectDatabase(ctx context.Context, cfg *config.Config) (*schema.Schema, error) {
-	// If database URL is not configured, return empty schema
-	// This allows generating initial migrations without a database
-	if cfg.Database.URL == "" {
-		return &schema.Schema{
-			Tables: []schema.Table{},
-			Enums:  []schema.Enum{},
-		}, nil
+// loadPreviousSchemaFromMigrations loads the previous schema state from migration history.
+// This function is 100% offline and does not require database connection.
+//
+// Returns:
+//   - Non-empty schema if migrations exist
+//   - Empty schema if migrations directory is empty (first migration scenario)
+//   - Error only if migration parsing fails
+func loadPreviousSchemaFromMigrations(cfg *config.Config) (*schema.Schema, error) {
+	migrationDir := cfg.Migration.Directory
+
+	if migrationDir == "" {
+		return nil, fmt.Errorf("migration directory not configured in .dryft.yaml")
 	}
 
-	intr, err := introspectpostgres.NewPostgresIntrospector(ctx, cfg.Database.URL)
+	// Load schema from migration files
+	s, err := migration.LoadSchemaFromMigrations(migrationDir)
 	if err != nil {
-		// If connection fails, return empty schema with warning
-		fmt.Fprintf(os.Stderr, "warning: failed to connect to database, treating as empty schema: %v\n", err)
-		return &schema.Schema{
-			Tables: []schema.Table{},
-			Enums:  []schema.Enum{},
-		}, nil
+		return nil, fmt.Errorf(
+			"failed to load schema from migrations in %s: %w\n\n"+
+				"Fix the migration file syntax error and try again.",
+			migrationDir, err,
+		)
 	}
-	defer func() {
-		if closeErr := intr.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to close introspector: %v\n", closeErr)
-		}
-	}()
 
-	s, err := intr.Introspect(ctx)
-	if err != nil {
-		// If introspection fails, return empty schema with warning
-		fmt.Fprintf(os.Stderr, "warning: failed to introspect database, treating as empty schema: %v\n", err)
+	if s == nil {
+		// No migrations found - return empty schema for first migration
+		fmt.Println("No migrations found, treating as empty schema (first migration)")
 		return &schema.Schema{
 			Tables: []schema.Table{},
 			Enums:  []schema.Enum{},
 		}, nil
 	}
 
+	// Successfully loaded from migrations
+	count := countMigrationFiles(migrationDir)
+	fmt.Printf("✓ Loaded schema from %d migration(s)\n", count)
 	return s, nil
+}
+
+// countMigrationFiles returns count of .sql files in directory.
+func countMigrationFiles(dir string) int {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 0
+	}
+	count := 0
+	for _, entry := range entries {
+		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".sql" {
+			count++
+		}
+	}
+	return count
 }

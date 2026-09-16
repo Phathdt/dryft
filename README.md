@@ -87,6 +87,42 @@ goose:
 
 See `.dryft.yaml.example` for full configuration options.
 
+## How It Works
+
+dryft generates incremental migrations by comparing your Prisma schema against **migration history** (100% offline):
+
+### Offline Migration Generation
+
+Migration generation is **100% offline** and does NOT require database connection:
+
+```bash
+# First migration (empty migrations/ directory)
+dryft migration create initial
+# → Creates full schema (CREATE TABLE)
+
+# Incremental migrations (existing migrations/ files)
+dryft migration create add_user_bio
+# → Creates incremental changes (ALTER TABLE)
+```
+
+**Workflow:**
+
+1. **Parse existing migrations** in `migrations/` directory
+2. Build virtual schema from migration history
+3. Compare with current `schema.prisma`
+4. Generate incremental SQL (ALTER instead of CREATE)
+
+### When Database Connection is Needed
+
+Database connection is ONLY needed for `db pull`:
+
+```bash
+# Introspect existing database → generate schema.prisma
+dryft db pull
+```
+
+After `db pull`, all future migrations are generated offline from migration history.
+
 ## Development
 
 ```bash

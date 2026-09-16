@@ -1,6 +1,6 @@
 # Phase 4: CLI Integration
 
-**Status:** Not Started  
+**Status:** Complete  
 **Dependencies:** Phase 1 (Parser), Phase 2 (Loader), Phase 3 (Builder)  
 **Estimated Effort:** 1 day  
 **Risk Level:** Medium (workflow changes)
@@ -440,15 +440,15 @@ CLAUDE.md                       # Update command docs
 ## Validation
 
 **Done When:**
-- [ ] `loadPreviousSchemaFromMigrations()` implemented (no DB fallback)
-- [ ] DB connection logic removed from `migration create`
-- [ ] Empty migrations/ returns empty schema (first migration scenario)
-- [ ] Error messages actionable
-- [ ] Integration tests pass (100% offline tests)
-- [ ] Manual testing checklist complete
-- [ ] Documentation updated (README, CLAUDE.md)
-- [ ] Existing tests still pass (regression check)
-- [ ] Verify `db pull` still works (unchanged)
+- [x] `loadPreviousSchemaFromMigrations()` implemented (no DB fallback)
+- [x] DB connection logic removed from `migration create`
+- [x] Empty migrations/ returns empty schema (first migration scenario)
+- [x] Error messages actionable
+- [x] Integration tests pass (100% offline tests)
+- [x] Manual testing checklist complete
+- [x] Documentation updated (README, CLAUDE.md)
+- [x] Existing tests still pass (regression check)
+- [x] Verify `db pull` still works (unchanged)
 
 ## Rollback Plan
 
