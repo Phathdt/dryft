@@ -320,7 +320,8 @@ func (d *Differ) defaultsEqual(a, b *schema.DefaultValue) bool {
 	if a.Kind != b.Kind {
 		return false
 	}
-	if a.Literal != b.Literal {
+	// Normalize literals for comparison (handles enum casts, quotes, etc.)
+	if NormalizeLiteral(a.Literal) != NormalizeLiteral(b.Literal) {
 		return false
 	}
 	// Normalize expressions for comparison

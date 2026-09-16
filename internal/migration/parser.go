@@ -212,6 +212,12 @@ func (p *Parser) parseColumnDef(def string, sql string) (ColumnDef, error) {
 				// Default is an expression wrapped in parentheses
 				defaultVal = extractParentheses(def[strings.Index(def[strings.Index(def, "DEFAULT")+7:], "(")+strings.Index(def, "DEFAULT")+7:])
 			}
+			// Check for type cast (::typename)
+			if idx+1 < len(tokens) && tokens[idx+1] == "::" {
+				// Include type cast in default value
+				defaultVal = defaultVal + "::" + tokens[idx+2]
+				idx += 2
+			}
 			col.Default = &defaultVal
 			idx++
 		case "PRIMARY":
@@ -533,6 +539,14 @@ func (p *Parser) parseAlterTable(tokens []string, sql string) (*AlterTable, erro
 					}
 					idx++
 					defaultVal := actionTokens[idx]
+					// Check for type cast (::typename)
+					if idx+1 < len(actionTokens) && actionTokens[idx+1] == "::" {
+						// Include type cast in default value
+						if idx+2 < len(actionTokens) {
+							defaultVal = defaultVal + "::" + actionTokens[idx+2]
+							idx += 2
+						}
+					}
 					alter.SetDefault = &defaultVal
 					idx++
 				default:

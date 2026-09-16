@@ -2,6 +2,8 @@ package migration
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/phathdt/dryft/internal/schema"
 )
@@ -284,9 +286,24 @@ func (b *SchemaBuilder) applyAlterColumn(table *schema.Table, action *AlterColum
 				col.Nullable = true
 			}
 			if action.SetDefault != nil {
-				col.Default = &schema.DefaultValue{
-					Kind:       schema.DefaultExpression,
-					Expression: *action.SetDefault,
+				// Detect if default is a literal or expression
+				defaultVal := *action.SetDefault
+
+				if (strings.HasPrefix(defaultVal, "'") && strings.Contains(defaultVal, "'")) ||
+					isNumericLiteral(defaultVal) ||
+					strings.ToLower(defaultVal) == "true" ||
+					strings.ToLower(defaultVal) == "false" {
+					// It's a literal value
+					col.Default = &schema.DefaultValue{
+						Kind:    schema.DefaultLiteral,
+						Literal: defaultVal,
+					}
+				} else {
+					// It's an expression
+					col.Default = &schema.DefaultValue{
+						Kind:       schema.DefaultExpression,
+						Expression: defaultVal,
+					}
 				}
 			}
 			if action.DropDefault {
@@ -320,9 +337,25 @@ func (b *SchemaBuilder) convertColumn(def ColumnDef) (schema.Column, error) {
 	}
 
 	if def.Default != nil {
-		col.Default = &schema.DefaultValue{
-			Kind:       schema.DefaultExpression,
-			Expression: *def.Default,
+		// Detect if default is a literal (quoted string/number) or expression (function call)
+		defaultVal := *def.Default
+
+		// Check if it's a quoted string literal
+		if (strings.HasPrefix(defaultVal, "'") && strings.Contains(defaultVal, "'")) ||
+			isNumericLiteral(defaultVal) ||
+			strings.ToLower(defaultVal) == "true" ||
+			strings.ToLower(defaultVal) == "false" {
+			// It's a literal value
+			col.Default = &schema.DefaultValue{
+				Kind:    schema.DefaultLiteral,
+				Literal: defaultVal,
+			}
+		} else {
+			// It's an expression (function call, etc.)
+			col.Default = &schema.DefaultValue{
+				Kind:       schema.DefaultExpression,
+				Expression: defaultVal,
+			}
 		}
 	}
 
@@ -458,3 +491,10 @@ func parseOrder(order string) schema.SortOrder {
 		return schema.SortAsc
 	}
 }
+
+// isNumericLiteral checks if a string is a numeric literal.
+func isNumericLiteral(s string) bool {
+	_, err := strconv.ParseFloat(s, 64)
+	return err == nil
+}
+

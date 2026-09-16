@@ -255,7 +255,8 @@ func TestSchemaBuilder_AlterColumn(t *testing.T) {
 		result := builder.Build()
 		col := result.Tables[0].Columns[0]
 		require.NotNil(t, col.Default)
-		assert.Equal(t, "true", col.Default.Expression)
+		assert.Equal(t, schema.DefaultLiteral, col.Default.Kind)
+		assert.Equal(t, "true", col.Default.Literal)
 	})
 
 	t.Run("drop default", func(t *testing.T) {
