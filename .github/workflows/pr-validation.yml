@@ -16,6 +16,8 @@ jobs:
   format:
     name: Format Check
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: auto
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -37,6 +39,8 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: auto
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -55,6 +59,8 @@ jobs:
   vet:
     name: Go Vet
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: auto
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -70,6 +76,8 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: auto
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -92,6 +100,8 @@ jobs:
   test:
     name: Test (Unit)
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: auto
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -120,6 +130,8 @@ jobs:
   test-integration:
     name: Test (Integration)
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: auto
     services:
       postgres:
         image: postgres:16-alpine
