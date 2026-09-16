@@ -4,23 +4,41 @@ package schema
 type TypeKind int
 
 const (
+	// TypeUnknown represents an unknown or unsupported type.
 	TypeUnknown TypeKind = iota
+	// TypeUUID represents a UUID type.
 	TypeUUID
+	// TypeText represents unlimited text.
 	TypeText
+	// TypeVarChar represents variable-length character type.
 	TypeVarChar
+	// TypeChar represents fixed-length character type.
 	TypeChar
+	// TypeInt32 represents a 32-bit integer.
 	TypeInt32
+	// TypeInt64 represents a 64-bit integer.
 	TypeInt64
+	// TypeBool represents a boolean type.
 	TypeBool
+	// TypeFloat32 represents a 32-bit floating point.
 	TypeFloat32
+	// TypeFloat64 represents a 64-bit floating point.
 	TypeFloat64
+	// TypeNumeric represents arbitrary precision numeric.
 	TypeNumeric
+	// TypeTimestamp represents a timestamp without timezone.
 	TypeTimestamp
+	// TypeTimestampTZ represents a timestamp with timezone.
 	TypeTimestampTZ
+	// TypeDate represents a date type.
 	TypeDate
+	// TypeJSON represents JSON data.
 	TypeJSON
+	// TypeJSONB represents binary JSON data.
 	TypeJSONB
+	// TypeBytes represents binary data.
 	TypeBytes
+	// TypeEnum represents an enum type.
 	TypeEnum
 )
 
@@ -70,8 +88,11 @@ func (t TypeKind) String() string {
 type DefaultKind int
 
 const (
+	// DefaultLiteral represents a literal default value.
 	DefaultLiteral DefaultKind = iota
+	// DefaultExpression represents an expression for default value.
 	DefaultExpression
+	// DefaultSequence represents a sequence-generated default.
 	DefaultSequence
 )
 
@@ -93,7 +114,9 @@ func (d DefaultKind) String() string {
 type SortOrder int
 
 const (
+	// SortAsc represents ascending sort order.
 	SortAsc SortOrder = iota
+	// SortDesc represents descending sort order.
 	SortDesc
 )
 
@@ -113,8 +136,11 @@ func (s SortOrder) String() string {
 type NullsPosition int
 
 const (
+	// NullsDefault uses database default null positioning.
 	NullsDefault NullsPosition = iota
+	// NullsFirst positions nulls before non-null values.
 	NullsFirst
+	// NullsLast positions nulls after non-null values.
 	NullsLast
 )
 

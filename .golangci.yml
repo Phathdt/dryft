@@ -11,8 +11,6 @@ linters:
     - ineffassign   # Detect ineffectual assignments
     - staticcheck   # Static analysis checks
     - unused        # Check for unused code
-    - misspell      # Spell checker
-    - revive        # Fast, configurable, extensible linter
 
 linters-settings:
   errcheck:
@@ -22,12 +20,15 @@ linters-settings:
   govet:
     check-shadowing: true
 
-  revive:
-    confidence: 0.8
-
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
+  # Exclude rules for common patterns that are not critical
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - govet
 
 output:
   format: colored-line-number

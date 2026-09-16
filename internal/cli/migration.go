@@ -16,6 +16,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// MigrationCommand creates the migration command for migration operations.
 func MigrationCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "migration",
@@ -36,7 +37,7 @@ func MigrationCommand() *cli.Command {
 			{
 				Name:  "status",
 				Usage: "List migrations",
-				Action: func(ctx context.Context, cmd *cli.Command) error {
+				Action: func(_ context.Context, _ *cli.Command) error {
 					fmt.Println("Not implemented yet")
 					return nil
 				},
@@ -45,7 +46,7 @@ func MigrationCommand() *cli.Command {
 	}
 }
 
-func migrationCreateAction(ctx context.Context, cmd *cli.Command) error {
+func migrationCreateAction(_ context.Context, cmd *cli.Command) error {
 	// 1. Get migration name
 	if cmd.Args().Len() < 1 {
 		return fmt.Errorf("migration name required")

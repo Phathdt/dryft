@@ -10,18 +10,19 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// ValidateCommand creates the validate command for schema and config validation.
 func ValidateCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "validate",
 		Usage: "Validate schema + config",
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return cmdValidate(ctx, cmd)
+		Action: func(_ context.Context, _ *cli.Command) error {
+			return cmdValidate()
 		},
 	}
 }
 
 // cmdValidate validates the Prisma schema and dryft configuration.
-func cmdValidate(ctx context.Context, cmd *cli.Command) error {
+func cmdValidate() error {
 	// Load configuration
 	cfg, err := config.Load(".dryft.yaml")
 	if err != nil {

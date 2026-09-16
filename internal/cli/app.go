@@ -1,9 +1,11 @@
+// Package cli provides command-line interface components for dryft.
 package cli
 
 import (
 	"github.com/urfave/cli/v3"
 )
 
+// NewApp creates and configures the main CLI application.
 func NewApp() *cli.Command {
 	return &cli.Command{
 		Name:    "dryft",

@@ -9,11 +9,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// InitCommand creates the init command for project initialization.
 func InitCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "init",
 		Usage: "Initialize dryft in current directory",
-		Action: func(ctx context.Context, cmd *cli.Command) error {
+		Action: func(_ context.Context, _ *cli.Command) error {
 			return runInit()
 		},
 	}

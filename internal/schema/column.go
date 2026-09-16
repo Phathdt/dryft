@@ -1,3 +1,4 @@
+// Package schema defines the internal schema representation.
 package schema
 
 // Column represents a table column with its properties and constraints.

@@ -95,10 +95,7 @@ func (f *Formatter) FormatAttributes(attributes []string) []string {
 		return nil
 	}
 
-	var result []string
-	for _, attr := range attributes {
-		result = append(result, attr)
-	}
+	result := append([]string(nil), attributes...)
 	return result
 }
 

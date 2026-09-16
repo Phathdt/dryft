@@ -1,10 +1,5 @@
 package prisma
 
-import (
-	"unicode"
-	"unicode/utf8"
-)
-
 // Lexer tokenizes Prisma schema input.
 type Lexer struct {
 	input        string
@@ -232,23 +227,4 @@ func (l *Lexer) AllTokens() []Token {
 // Position returns the current line and column.
 func (l *Lexer) Position() (line, column int) {
 	return l.line, l.column
-}
-
-// isIdentRune returns true if the rune can be part of an identifier.
-func isIdentRune(r rune) bool {
-	return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_'
-}
-
-// isWhitespace returns true if the rune is whitespace.
-func isWhitespace(r rune) bool {
-	return unicode.IsSpace(r)
-}
-
-// runeAt returns the rune at the given position in the input.
-func (l *Lexer) runeAt(pos int) (rune, int) {
-	if pos >= len(l.input) {
-		return 0, 0
-	}
-	r, size := utf8.DecodeRuneInString(l.input[pos:])
-	return r, size
 }

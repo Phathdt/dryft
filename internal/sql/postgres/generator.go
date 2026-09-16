@@ -1,3 +1,4 @@
+// Package postgres implements PostgreSQL-specific SQL generation.
 package postgres
 
 import (
@@ -94,7 +95,7 @@ func (g *Generator) generateOperation(op diff.Operation) (string, error) {
 func (g *Generator) generateCreateTable(op diff.CreateTable) string {
 	var b strings.Builder
 
-	b.WriteString(fmt.Sprintf("CREATE TABLE %s (\n", quoteIdentifier(op.Table.Name)))
+	fmt.Fprintf(&b, "CREATE TABLE %s (\n", quoteIdentifier(op.Table.Name))
 
 	// Columns
 	for i, col := range op.Table.Columns {
@@ -113,7 +114,7 @@ func (g *Generator) generateCreateTable(op diff.CreateTable) string {
 		if col.Default != nil {
 			defaultVal := formatDefault(col.Default)
 			if defaultVal != "" {
-				b.WriteString(fmt.Sprintf(" DEFAULT %s", defaultVal))
+				fmt.Fprintf(&b, " DEFAULT %s", defaultVal)
 			}
 		}
 	}
@@ -146,10 +147,10 @@ func (g *Generator) generateDropTable(op diff.DropTable) string {
 // generateAddColumn generates ALTER TABLE ADD COLUMN statement.
 func (g *Generator) generateAddColumn(op diff.AddColumn) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("ALTER TABLE %s\nADD COLUMN %s %s",
+	fmt.Fprintf(&b, "ALTER TABLE %s\nADD COLUMN %s %s",
 		quoteIdentifier(op.Table),
 		quoteIdentifier(op.Column.Name),
-		mapDataType(op.Column.Type)))
+		mapDataType(op.Column.Type))
 
 	if !op.Column.Nullable {
 		b.WriteString(" NOT NULL")
@@ -158,7 +159,7 @@ func (g *Generator) generateAddColumn(op diff.AddColumn) string {
 	if op.Column.Default != nil {
 		defaultVal := formatDefault(op.Column.Default)
 		if defaultVal != "" {
-			b.WriteString(fmt.Sprintf(" DEFAULT %s", defaultVal))
+			fmt.Fprintf(&b, " DEFAULT %s", defaultVal)
 		}
 	}
 

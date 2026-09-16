@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// Validate checks the configuration for required fields and valid values.
 func (c *Config) Validate() error {
 	var errors []string
 

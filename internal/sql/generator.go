@@ -1,3 +1,4 @@
+// Package sql provides SQL generation interfaces.
 package sql
 
 import "github.com/phathdt/dryft/internal/diff"

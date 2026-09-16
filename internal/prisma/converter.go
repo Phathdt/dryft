@@ -221,11 +221,12 @@ func (c *Converter) convertType(ft FieldType, attrs []FieldAttribute) (schema.Da
 	// Map Prisma type to Internal type
 	switch ft.Name {
 	case "String":
-		if dbType == "Uuid" {
+		switch dbType {
+		case "Uuid":
 			dt.Kind = schema.TypeUUID
-		} else if dbType == "Text" {
+		case "Text":
 			dt.Kind = schema.TypeText
-		} else {
+		default:
 			dt.Kind = schema.TypeText // Default String → Text
 		}
 	case "Int":

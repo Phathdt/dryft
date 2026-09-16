@@ -1,3 +1,4 @@
+// Package diff provides schema comparison and operation generation.
 package diff
 
 import (
@@ -73,14 +74,15 @@ func (d *Differ) diffEnums(before, after *schema.Schema) ([]Operation, error) {
 		}
 	}
 
-	// Find dropped enums (should happen after tables are migrated)
+	// TODO: Find dropped enums (should happen after tables are migrated)
 	// Note: In practice, we should check if enum is still used by tables
-	for name := range beforeEnums {
-		if _, exists := afterEnums[name]; !exists {
-			// For MVP, we'll add a DropEnum operation type later if needed
-			// For now, skip dropping enums to avoid breaking references
-		}
-	}
+	// For MVP, we skip dropping enums to avoid breaking references
+	// Uncomment when DropEnum operation is implemented:
+	// for name := range beforeEnums {
+	// 	if _, ok := afterEnums[name]; !ok {
+	// 		ops = append(ops, diff.DropEnum{Name: name})
+	// 	}
+	// }
 
 	return ops, nil
 }

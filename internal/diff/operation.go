@@ -6,18 +6,31 @@ import "github.com/phathdt/dryft/internal/schema"
 type OperationKind int
 
 const (
+	// OpCreateTable creates a new table.
 	OpCreateTable OperationKind = iota
+	// OpDropTable removes an existing table.
 	OpDropTable
+	// OpRenameTable renames an existing table.
 	OpRenameTable
+	// OpAddColumn adds a new column to a table.
 	OpAddColumn
+	// OpDropColumn removes a column from a table.
 	OpDropColumn
+	// OpRenameColumn renames a column in a table.
 	OpRenameColumn
+	// OpAlterColumn modifies a column's type or constraints.
 	OpAlterColumn
+	// OpCreateIndex creates a new index.
 	OpCreateIndex
+	// OpDropIndex removes an existing index.
 	OpDropIndex
+	// OpCreateForeignKey adds a foreign key constraint.
 	OpCreateForeignKey
+	// OpDropForeignKey removes a foreign key constraint.
 	OpDropForeignKey
+	// OpCreateEnum creates a new enum type.
 	OpCreateEnum
+	// OpAlterEnum modifies an enum type.
 	OpAlterEnum
 )
 
@@ -58,9 +71,13 @@ func (k OperationKind) String() string {
 type DestructiveLevel int
 
 const (
+	// Safe operations don't risk data loss.
 	Safe DestructiveLevel = iota
+	// Risky operations might cause issues but are generally safe.
 	Risky
+	// PotentiallyDestructive operations may lose data under certain conditions.
 	PotentiallyDestructive
+	// Destructive operations will cause data loss.
 	Destructive
 )
 

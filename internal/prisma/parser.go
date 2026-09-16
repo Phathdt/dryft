@@ -107,19 +107,20 @@ func (p *Parser) parseModel() *ModelDeclaration {
 
 	// Parse fields and model attributes
 	for p.current.Type != TokenRBrace && p.current.Type != TokenEOF {
-		if p.current.Type == TokenAtAt {
+		switch p.current.Type {
+		case TokenAtAt:
 			// Model-level attribute
 			attr := p.parseModelAttribute()
 			if attr != nil {
 				model.Attributes = append(model.Attributes, *attr)
 			}
-		} else if p.current.Type == TokenIdent {
+		case TokenIdent:
 			// Field declaration
 			field := p.parseField()
 			if field != nil {
 				model.Fields = append(model.Fields, *field)
 			}
-		} else {
+		default:
 			p.addError(fmt.Sprintf("unexpected token %s at line %d:%d in model body",
 				p.current.Type, p.current.Line, p.current.Column))
 			p.nextToken()
@@ -276,10 +277,11 @@ func (p *Parser) parseProperty() *Property {
 	p.nextToken() // consume '='
 
 	var value interface{}
-	if p.current.Type == TokenString {
+	switch p.current.Type {
+	case TokenString:
 		value = p.current.Literal
 		p.nextToken()
-	} else if p.current.Type == TokenIdent {
+	case TokenIdent:
 		// Check if it's a function call like env("DATABASE_URL")
 		funcName := p.current.Literal
 		p.nextToken()
@@ -288,7 +290,7 @@ func (p *Parser) parseProperty() *Property {
 		} else {
 			value = funcName
 		}
-	} else {
+	default:
 		p.addError(fmt.Sprintf("expected property value at line %d:%d",
 			p.current.Line, p.current.Column))
 		p.nextToken()

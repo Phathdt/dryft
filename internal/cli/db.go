@@ -13,6 +13,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// DBCommand creates the db command for database operations.
 func DBCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "db",
@@ -21,21 +22,21 @@ func DBCommand() *cli.Command {
 			{
 				Name:  "pull",
 				Usage: "Introspect DB → schema.prisma",
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					return cmdDbPull(ctx, cmd)
+				Action: func(ctx context.Context, _ *cli.Command) error {
+					return cmdDbPull(ctx)
 				},
 			},
 			{
 				Name:  "inspect",
 				Usage: "Print schema without writes",
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					return cmdDbInspect(ctx, cmd)
+				Action: func(ctx context.Context, _ *cli.Command) error {
+					return cmdDbInspect(ctx)
 				},
 			},
 			{
 				Name:  "baseline",
 				Usage: "Mark current DB as baseline",
-				Action: func(ctx context.Context, cmd *cli.Command) error {
+				Action: func(_ context.Context, _ *cli.Command) error {
 					fmt.Println("Not implemented yet")
 					return nil
 				},
@@ -45,7 +46,7 @@ func DBCommand() *cli.Command {
 }
 
 // cmdDbPull introspects the database and writes schema.prisma file.
-func cmdDbPull(ctx context.Context, cmd *cli.Command) error {
+func cmdDbPull(ctx context.Context) error {
 	// Load configuration
 	cfg, err := config.Load(".dryft.yaml")
 	if err != nil {
@@ -107,7 +108,7 @@ func cmdDbPull(ctx context.Context, cmd *cli.Command) error {
 }
 
 // cmdDbInspect introspects the database and prints the schema as JSON.
-func cmdDbInspect(ctx context.Context, cmd *cli.Command) error {
+func cmdDbInspect(ctx context.Context) error {
 	// Load configuration
 	cfg, err := config.Load(".dryft.yaml")
 	if err != nil {

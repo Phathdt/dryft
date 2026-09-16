@@ -158,11 +158,7 @@ func (w *Writer) writeTable(table *schema.Table, relations []relationField) (str
 		}
 		seenFields[rel.Name] = rel.Name
 
-		fieldLines = append(fieldLines, FieldLine{
-			Name:       rel.Name,
-			Type:       rel.Type,
-			Attributes: rel.Attributes,
-		})
+		fieldLines = append(fieldLines, FieldLine(rel))
 	}
 
 	// Align fields

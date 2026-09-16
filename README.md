@@ -1,5 +1,9 @@
 # dryft
 
+[![CI](https://github.com/phathdt/dryft/actions/workflows/pr-validation.yml/badge.svg)](https://github.com/phathdt/dryft/actions/workflows/pr-validation.yml)
+[![codecov](https://codecov.io/gh/phathdt/dryft/branch/main/graph/badge.svg)](https://codecov.io/gh/phathdt/dryft)
+[![Go Report Card](https://goreportcard.com/badge/github.com/phathdt/dryft)](https://goreportcard.com/report/github.com/phathdt/dryft)
+
 > **Schema in. Migration out.**
 
 Go CLI tool for PostgreSQL schema management via Prisma schemas and Goose migrations.
@@ -98,9 +102,35 @@ make fmt
 # Run static analysis
 make vet
 
+# Run linter
+make lint
+
 # Development workflow (fmt + vet + test + build)
 make dev
 ```
+
+## Contributing
+
+We welcome contributions! Before submitting a pull request, please ensure:
+
+- All tests pass: `make test`
+- Code is formatted: `make fmt`
+- No lint errors: `make lint`
+- Test coverage ≥85%
+
+See [CONTRIBUTING.md](./docs/contributing.md) for detailed guidelines.
+
+### Pull Request Requirements
+
+All PRs must pass these automated checks:
+
+✅ **Format** - Code properly formatted with `gofmt`  
+✅ **Lint** - No linting errors (`golangci-lint`)  
+✅ **Vet** - Pass `go vet` analysis  
+✅ **Build** - Code compiles successfully  
+✅ **Unit Tests** - All unit tests pass  
+✅ **Integration Tests** - All integration tests pass  
+✅ **Coverage** - Maintain ≥85% test coverage
 
 ## Development Status
 

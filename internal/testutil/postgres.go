@@ -1,8 +1,10 @@
+// Package testutil provides testing utilities and helpers for dryft integration tests.
 package testutil
 
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -131,7 +133,11 @@ func (pc *PostgresContainer) ExecuteSQL(ctx context.Context, sql string) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect: %w", err)
 	}
-	defer conn.Close(ctx)
+	defer func() {
+		if closeErr := conn.Close(ctx); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close connection: %v\n", closeErr)
+		}
+	}()
 
 	_, err = conn.Exec(ctx, sql)
 	if err != nil {
@@ -148,7 +154,11 @@ func (pc *PostgresContainer) CleanupTables(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect: %w", err)
 	}
-	defer conn.Close(ctx)
+	defer func() {
+		if closeErr := conn.Close(ctx); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close connection: %v\n", closeErr)
+		}
+	}()
 
 	// Drop all tables in public schema
 	_, err = conn.Exec(ctx, `
