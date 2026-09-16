@@ -2,9 +2,13 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/phathdt/dryft/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -468,6 +472,10 @@ migration:
 }
 
 func TestMigrationCreateErrors_NoChanges(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test - requires database connection")
+	}
+
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
 	defer func() { _ = os.Chdir(oldCwd) }()
@@ -475,10 +483,36 @@ func TestMigrationCreateErrors_NoChanges(t *testing.T) {
 		t.Fatalf("failed to chdir: %v", err)
 	}
 
-	// Create config
-	configContent := `database:
+	ctx := context.Background()
+	pgContainer, err := testutil.GetSharedContainer(ctx)
+	if err != nil {
+		t.Skip("skipping integration test - could not start postgres container")
+	}
+
+	// Create a test database
+	dbName := "test_no_changes_" + strings.ReplaceAll(t.Name(), "/", "_")
+	setupConn, err := pgx.Connect(ctx, pgContainer.ConnString)
+	require.NoError(t, err)
+	_, err = setupConn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s", dbName))
+	setupConn.Close(ctx)
+	if err != nil {
+		t.Skip("skipping - could not create test database")
+	}
+
+	t.Cleanup(func() {
+		conn, _ := pgx.Connect(ctx, pgContainer.ConnString)
+		if conn != nil {
+			conn.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE)", dbName))
+			conn.Close(ctx)
+		}
+	})
+
+	testDBConnStr := strings.Replace(pgContainer.ConnString, "/testdb", "/"+dbName, 1)
+
+	// Create config with valid database URL
+	configContent := fmt.Sprintf(`database:
   provider: postgresql
-  url: postgresql://localhost/test
+  url: %s
 
 schema:
   file: prisma/schema.prisma
@@ -486,8 +520,8 @@ schema:
 migration:
   directory: migrations
   format: goose
-`
-	err := os.WriteFile(".dryft.yaml", []byte(configContent), 0644)
+`, testDBConnStr)
+	err = os.WriteFile(".dryft.yaml", []byte(configContent), 0644)
 	require.NoError(t, err)
 
 	// Create empty schema (just datasource, no models)
@@ -503,7 +537,6 @@ migration:
 	require.NoError(t, err)
 
 	app := NewApp()
-	ctx := context.Background()
 
 	err = app.Run(ctx, []string{"dryft", "migration", "create", "empty_change"})
 

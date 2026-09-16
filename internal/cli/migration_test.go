@@ -139,6 +139,10 @@ model User {
 }
 
 func TestMigrationCreate_NoSchemaChanges(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test - requires database connection")
+	}
+
 	tmpDir := t.TempDir()
 	oldCwd, _ := os.Getwd()
 	defer os.Chdir(oldCwd)

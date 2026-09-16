@@ -8,11 +8,12 @@ import (
 
 	"github.com/phathdt/dryft/internal/config"
 	"github.com/phathdt/dryft/internal/diff"
+	introspectpostgres "github.com/phathdt/dryft/internal/introspect/postgres"
 	"github.com/phathdt/dryft/internal/migration"
 	"github.com/phathdt/dryft/internal/prisma"
 	"github.com/phathdt/dryft/internal/schema"
 	"github.com/phathdt/dryft/internal/sql"
-	"github.com/phathdt/dryft/internal/sql/postgres"
+	sqlpostgres "github.com/phathdt/dryft/internal/sql/postgres"
 	"github.com/urfave/cli/v3"
 )
 
@@ -90,13 +91,12 @@ func migrationCreateAction(_ context.Context, cmd *cli.Command) error {
 		fmt.Println()
 	}
 
-	// 5. TODO: Load previous schema state (for now, assume empty schema as "before")
-	// In real implementation, this would come from:
-	// - Last migration state in .dryft/state.json, OR
-	// - Introspect current database
-	previousSchema := &schema.Schema{
-		Tables: []schema.Table{},
-		Enums:  []schema.Enum{},
+	// 5. Load previous schema state from database introspection
+	// This ensures we generate incremental migrations (ALTER) instead of recreating everything
+	ctx := context.Background()
+	previousSchema, err := introspectDatabase(ctx, cfg)
+	if err != nil {
+		return fmt.Errorf("failed to load previous schema state: %w", err)
 	}
 
 	// 6. Run diff
@@ -130,7 +130,7 @@ func migrationCreateAction(_ context.Context, cmd *cli.Command) error {
 	}
 
 	// 9. Generate SQL
-	generator := postgres.NewGenerator(sql.GeneratorOptions{})
+	generator := sqlpostgres.NewGenerator(sql.GeneratorOptions{})
 	upStatements, err := generator.Generate(plan.Operations)
 	if err != nil {
 		return fmt.Errorf("failed to generate SQL: %w", err)
@@ -178,4 +178,21 @@ func migrationCreateAction(_ context.Context, cmd *cli.Command) error {
 	fmt.Printf("  2. Apply it: goose -dir %s postgres $DATABASE_URL up\n", migrationDir)
 
 	return nil
+}
+
+// introspectDatabase loads the current database schema.
+// Returns an empty schema if the database is empty or connection fails.
+func introspectDatabase(ctx context.Context, cfg *config.Config) (*schema.Schema, error) {
+	intr, err := introspectpostgres.NewPostgresIntrospector(ctx, cfg.Database.URL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create introspector: %w", err)
+	}
+	defer intr.Close()
+
+	s, err := intr.Introspect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to introspect database: %w", err)
+	}
+
+	return s, nil
 }
