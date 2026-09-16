@@ -183,15 +183,34 @@ func migrationCreateAction(_ context.Context, cmd *cli.Command) error {
 // introspectDatabase loads the current database schema.
 // Returns an empty schema if the database is empty or connection fails.
 func introspectDatabase(ctx context.Context, cfg *config.Config) (*schema.Schema, error) {
+	// If database URL is not configured, return empty schema
+	// This allows generating initial migrations without a database
+	if cfg.Database.URL == "" {
+		return &schema.Schema{
+			Tables: []schema.Table{},
+			Enums:  []schema.Enum{},
+		}, nil
+	}
+
 	intr, err := introspectpostgres.NewPostgresIntrospector(ctx, cfg.Database.URL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create introspector: %w", err)
+		// If connection fails, return empty schema with warning
+		fmt.Fprintf(os.Stderr, "warning: failed to connect to database, treating as empty schema: %v\n", err)
+		return &schema.Schema{
+			Tables: []schema.Table{},
+			Enums:  []schema.Enum{},
+		}, nil
 	}
 	defer intr.Close()
 
 	s, err := intr.Introspect(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to introspect database: %w", err)
+		// If introspection fails, return empty schema with warning
+		fmt.Fprintf(os.Stderr, "warning: failed to introspect database, treating as empty schema: %v\n", err)
+		return &schema.Schema{
+			Tables: []schema.Table{},
+			Enums:  []schema.Enum{},
+		}, nil
 	}
 
 	return s, nil
