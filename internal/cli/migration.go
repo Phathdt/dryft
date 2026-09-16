@@ -60,13 +60,13 @@ func migrationCreateAction(_ context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if err := cfg.Validate(); err != nil {
-		return fmt.Errorf("invalid config: %w", err)
+	if validateErr := cfg.Validate(); validateErr != nil {
+		return fmt.Errorf("invalid config: %w", validateErr)
 	}
 
 	// 3. Check if schema file exists
 	schemaPath := cfg.Schema.File
-	if _, err := os.Stat(schemaPath); os.IsNotExist(err) {
+	if _, statErr := os.Stat(schemaPath); os.IsNotExist(statErr) {
 		return fmt.Errorf("schema file not found: %s\nRun 'dryft db pull' first", schemaPath)
 	}
 
@@ -201,7 +201,11 @@ func introspectDatabase(ctx context.Context, cfg *config.Config) (*schema.Schema
 			Enums:  []schema.Enum{},
 		}, nil
 	}
-	defer intr.Close()
+	defer func() {
+		if closeErr := intr.Close(); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close introspector: %v\n", closeErr)
+		}
+	}()
 
 	s, err := intr.Introspect(ctx)
 	if err != nil {

@@ -64,8 +64,8 @@ func cmdDbPull(ctx context.Context) error {
 		return fmt.Errorf("failed to create introspector: %w", err)
 	}
 	defer func() {
-		if err := intr.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to close introspector: %v\n", err)
+		if closeErr := intr.Close(); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close introspector: %v\n", closeErr)
 		}
 	}()
 
@@ -126,8 +126,8 @@ func cmdDbInspect(ctx context.Context) error {
 		return fmt.Errorf("failed to create introspector: %w", err)
 	}
 	defer func() {
-		if err := intr.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to close introspector: %v\n", err)
+		if closeErr := intr.Close(); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close introspector: %v\n", closeErr)
 		}
 	}()
 

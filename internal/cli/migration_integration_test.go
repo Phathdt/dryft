@@ -82,7 +82,17 @@ func TestMigrationCreate_DatabaseIntrospection(t *testing.T) {
 	prismaSchema, err := writer.Write(actualSchema)
 	require.NoError(t, err)
 
-	modifiedPrisma := strings.Replace(prismaSchema, "  title  String", "  title  String\n  bio    String? @db.Text", 1)
+	// Insert bio column after title line - find the line with title field and add bio after it
+	lines := strings.Split(prismaSchema, "\n")
+	var modifiedLines []string
+	for _, line := range lines {
+		modifiedLines = append(modifiedLines, line)
+		if strings.Contains(line, "title") && strings.Contains(line, "String") {
+			// Add bio field with same indentation
+			modifiedLines = append(modifiedLines, "  bio   String? @db.Text")
+		}
+	}
+	modifiedPrisma := strings.Join(modifiedLines, "\n")
 
 	parseResult, err := prisma.Parse(modifiedPrisma)
 	require.NoError(t, err)

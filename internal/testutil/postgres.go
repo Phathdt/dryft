@@ -49,7 +49,9 @@ func GetSharedContainer(ctx context.Context) (*PostgresContainer, error) {
 
 		connString, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
 		if err != nil {
-			_ = pgContainer.Terminate(ctx)
+			if termErr := pgContainer.Terminate(ctx); termErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to terminate container: %v\n", termErr)
+			}
 			sharedContainerErr = fmt.Errorf("failed to get connection string: %w", err)
 			return
 		}
@@ -100,7 +102,9 @@ func StartPostgres(ctx context.Context, t *testing.T) (*PostgresContainer, error
 
 	connString, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
 	if err != nil {
-		_ = pgContainer.Terminate(ctx)
+		if termErr := pgContainer.Terminate(ctx); termErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to terminate container: %v\n", termErr)
+		}
 		return nil, fmt.Errorf("failed to get connection string: %w", err)
 	}
 

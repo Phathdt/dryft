@@ -40,7 +40,7 @@ func cmdValidate() error {
 		schemaPath = "prisma/schema.prisma"
 	}
 
-	if _, err := os.Stat(schemaPath); os.IsNotExist(err) {
+	if _, statErr := os.Stat(schemaPath); os.IsNotExist(statErr) {
 		return fmt.Errorf("schema file not found: %s", schemaPath)
 	}
 

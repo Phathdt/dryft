@@ -2,42 +2,29 @@ version: "2"
 
 run:
   timeout: 5m
-  tests: false  # Don't run linters on test files
+  tests: false
 
 linters:
   enable:
-    - errcheck      # Check for unchecked errors
-    - govet         # Go vet examines Go source code
-    - ineffassign   # Detect ineffectual assignments
-    - staticcheck   # Static analysis checks
-    - unused        # Check for unused code
-
-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-
-  govet:
-    enable:
-      - shadow
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    govet:
+      enable:
+        - shadow
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-  exclusions:
-    presets:
-      - common-false-positives
-    paths:
-      - _test\.go$
 
 output:
   formats:
     text:
       path: stdout
-      print-linter-name: true
-      print-issued-lines: true
   show-stats: true
-  sort-order:
-    - severity
-    - file
-    - linter
