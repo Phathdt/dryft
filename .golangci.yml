@@ -12,25 +12,26 @@ linters:
     - staticcheck   # Static analysis checks
     - unused        # Check for unused code
 
-linters-settings:
+settings:
   errcheck:
     check-type-assertions: true
     check-blank: true
 
   govet:
-    check-shadowing: true
+    enable:
+      - shadow
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-  # Exclude rules for common patterns that are not critical
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-        - govet
+  exclusions:
+    presets:
+      - common-false-positives
+    paths:
+      - _test\.go$
 
 output:
-  format: colored-line-number
-  print-issued-lines: true
-  print-linter-name: true
+  formats:
+    - format: colored-line-number
+      path: stdout
+  show-stats: true
