@@ -589,11 +589,11 @@ func TestDiffer_SequenceRefsEqual(t *testing.T) {
 // operations are generated (not just bundled in CreateTable).
 func TestDiffer_NewTableWithIndexes(t *testing.T) {
 	tests := []struct {
-		name      string
-		before    *schema.Schema
-		after     *schema.Schema
-		wantOps   int
-		checkOps  func(*testing.T, []Operation)
+		name     string
+		before   *schema.Schema
+		after    *schema.Schema
+		wantOps  int
+		checkOps func(*testing.T, []Operation)
 	}{
 		{
 			name: "new table with single index",
