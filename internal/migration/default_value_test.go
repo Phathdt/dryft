@@ -12,11 +12,11 @@ import (
 // and compared between migrations and Prisma schema.
 func TestDefaultValueComparison(t *testing.T) {
 	tests := []struct {
-		name           string
-		migrationSQL   string
-		prismaDefault  string
-		shouldMatch    bool
-		description    string
+		name          string
+		migrationSQL  string
+		prismaDefault string
+		shouldMatch   bool
+		description   string
 	}{
 		{
 			name:          "enum with cast - exact match",

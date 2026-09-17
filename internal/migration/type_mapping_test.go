@@ -66,10 +66,10 @@ func TestMapSQLType_WithPrecision(t *testing.T) {
 	enums := make(map[string]*schema.Enum)
 
 	tests := []struct {
-		sqlType         string
-		expectedKind    schema.TypeKind
-		expectedPrec    int
-		expectedScale   int
+		sqlType       string
+		expectedKind  schema.TypeKind
+		expectedPrec  int
+		expectedScale int
 	}{
 		{"VARCHAR(255)", schema.TypeVarChar, 255, 0},
 		{"CHAR(10)", schema.TypeChar, 10, 0},

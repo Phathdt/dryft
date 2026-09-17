@@ -350,11 +350,11 @@ func TestSchemaBuilder_CreateIndex(t *testing.T) {
 	})
 
 	err := builder.Apply(&CreateIndex{
-		Name:   "idx_users_email",
-		Table:  "users",
+		Name:    "idx_users_email",
+		Table:   "users",
 		Columns: []IndexColumnDef{{Name: "email"}},
-		Unique: true,
-		Method: "btree",
+		Unique:  true,
+		Method:  "btree",
 	})
 	require.NoError(t, err)
 
