@@ -142,6 +142,75 @@ func TestSomething_Integration(t *testing.T) {
 - Indexes: BTree, GIN, GiST, Hash, partial (8 tests)
 - Edge cases: Unicode, keywords, circular FKs (12 tests)
 
+## Known Issues & Limitations
+
+### 🔴 High Priority (Affecting Core Functionality)
+
+**Issue #21: `@@index` not generated in migrations**
+- **Impact**: Index definitions are parsed correctly but SQL generation skips them
+- **Affected**: `internal/sql/postgres.go`, `internal/migration/goose.go`
+- **Workaround**: Manually add CREATE INDEX statements
+- **Status**: Bug, needs investigation in SQL generator
+
+**Issue #10: Prisma relation fields skipped**
+- **Impact**: `@relation` fields are parsed with warnings but not converted to FK constraints
+- **Affected**: `internal/prisma/converter.go:87-91`, `internal/prisma/ast.go`
+- **Behavior**: Shows warning "relation field skipped (relations not supported in MVP)"
+- **Status**: Core feature, high priority for v0.2
+
+### 🟡 Medium Priority (UX & Safety)
+
+**Issue #15: No automatic column rename detection**
+- **Impact**: Column renames appear as DROP+ADD (potential data loss)
+- **Workaround**: Use explicit `--rename` flag
+- **Risk**: HIGH - data loss if user forgets flag
+- **File**: `plans/260915-1551-dryft-mvp/plan.md:112`
+
+**Issue #12: Enum drops disabled**
+- **Impact**: Removed enums are never dropped from database
+- **Location**: `internal/diff/differ.go:77-85` (code commented out)
+- **Reason**: Need dependency checks before dropping
+- **Safety**: Prevents breaking references
+
+**Issue #14: Single schema only**
+- **Impact**: Only `public` schema is introspected
+- **Use case**: Multi-tenant apps, enterprise databases
+- **File**: `plans/260915-1551-dryft-mvp/phase-03-introspector.md:320`
+
+**Issue #13: Views not supported**
+- **Impact**: Database views are ignored during introspection
+- **Use case**: Legacy databases, reporting schemas
+
+### 🟢 Low Priority (Future Features)
+
+- **#19**: Advanced env var expansion (`${VAR:-default}` syntax)
+- **#18**: go-migrate migration format output
+- **#16**: Deferrable and initially deferred foreign keys
+- **#17**: MySQL database provider support (out of MVP scope)
+
+## Priority Tasks (v0.2 Roadmap)
+
+1. **Fix Issue #21** (@@index generation bug)
+   - Investigate `internal/sql/postgres.go` index SQL generation
+   - Verify `internal/migration/goose.go` includes indexes
+   - Add regression tests for index generation
+
+2. **Implement Issue #10** (Prisma relation support)
+   - Parse `@relation` fields completely
+   - Convert to FK constraints in internal schema
+   - Generate proper FK DDL in migrations
+   - Handle onDelete/onUpdate actions
+
+3. **Add Issue #23** (E2E migration tests)
+   - Test: Prisma → SQL → PostgreSQL → Introspect → Verify
+   - Use testcontainers for isolated PostgreSQL
+   - Effort: ~2 hours, high value for regression safety
+
+4. **Implement Issue #15** (Auto rename detection)
+   - Heuristic detection (similar names, same type)
+   - Interactive confirmation for safety
+   - Prevent accidental data loss
+
 ## Configuration
 
 `.dryft.yaml` schema:

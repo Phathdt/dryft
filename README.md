@@ -184,6 +184,46 @@ All PRs must pass these automated checks:
 
 See [MVP_COMPLETE.md](./MVP_COMPLETE.md) for detailed summary.
 
+## Known Limitations
+
+Current MVP has the following limitations:
+
+### High Priority Issues
+- **`@@index` not generated in migrations** ([#21](https://github.com/Phathdt/dryft/issues/21)) - Index definitions are parsed but not included in SQL output
+- **Prisma relation fields skipped** ([#10](https://github.com/Phathdt/dryft/issues/10)) - `@relation` syntax is parsed with warnings but not converted to FK constraints
+
+### Medium Priority
+- **No automatic column rename detection** ([#15](https://github.com/Phathdt/dryft/issues/15)) - Renames appear as DROP+ADD (potential data loss)
+- **Enum drops disabled** ([#12](https://github.com/Phathdt/dryft/issues/12)) - Safety feature pending dependency checks
+- **Single schema only** ([#14](https://github.com/Phathdt/dryft/issues/14)) - Only `public` schema introspected
+- **Views not supported** ([#13](https://github.com/Phathdt/dryft/issues/13)) - Database views are ignored
+
+### Future Features
+- Advanced env var expansion ([#19](https://github.com/Phathdt/dryft/issues/19)) - Only basic `${VAR}` supported
+- go-migrate format ([#18](https://github.com/Phathdt/dryft/issues/18)) - Only Goose format currently
+- Deferrable foreign keys ([#16](https://github.com/Phathdt/dryft/issues/16)) - Advanced PostgreSQL feature
+- MySQL support ([#17](https://github.com/Phathdt/dryft/issues/17)) - PostgreSQL only for now
+
+See [GitHub Issues](https://github.com/Phathdt/dryft/issues) for complete list and progress.
+
+## Roadmap
+
+### v0.2 (In Progress)
+- [ ] Fix `@@index` generation in migrations (#21)
+- [ ] Support Prisma `@relation` fields and FK constraints (#10)
+- [ ] Add end-to-end migration tests with PostgreSQL (#23)
+- [ ] Implement automatic column rename detection (#15)
+
+### v0.3 (Planned)
+- [ ] Enum drop operations with safety checks (#12)
+- [ ] Multi-schema PostgreSQL support (#14)
+- [ ] PostgreSQL views introspection and migration (#13)
+
+### Future
+- [ ] MySQL database provider support (#17)
+- [ ] go-migrate format output (#18)
+- [ ] Advanced constraint features (deferrable FKs, etc.)
+
 ## License
 
 MIT
