@@ -227,6 +227,7 @@ func (op CreateIndex) Description() string {
 type DropIndex struct {
 	Table string
 	Name  string
+	Index schema.Index // Full index definition for auto-name generation when Name is empty
 }
 
 func (op DropIndex) Kind() OperationKind             { return OpDropIndex }

@@ -144,6 +144,15 @@ func (d *Differ) diffTables(before, after *schema.Schema) ([]Operation, error) {
 	for name, table := range afterTables {
 		if _, exists := beforeTables[name]; !exists {
 			ops = append(ops, CreateTable{Table: table})
+
+			// Generate CreateIndex operations for indexes on new tables
+			// (SQL generator doesn't output indexes from CreateTable.Table.Indexes)
+			for _, idx := range table.Indexes {
+				ops = append(ops, CreateIndex{
+					Table: table.Name,
+					Index: idx,
+				})
+			}
 		}
 	}
 
@@ -392,6 +401,7 @@ func (d *Differ) diffIndexes(before, after schema.Table) []Operation {
 			ops = append(ops, DropIndex{
 				Table: before.Name,
 				Name:  idx.Name,
+				Index: idx, // Include full index for auto-name generation
 			})
 		}
 	}
