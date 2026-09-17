@@ -623,3 +623,93 @@ model User {
 		t.Error("expected @relation attribute on author field")
 	}
 }
+
+func TestParser_CompositeID(t *testing.T) {
+	input := `
+model UserRole {
+  userId String
+  roleId String
+
+  @@id([userId, roleId])
+}
+`
+	parser := NewParser(input)
+	schema, err := parser.ParseSchema()
+
+	if err != nil {
+		t.Fatalf("parser error: %v", err)
+	}
+
+	if len(schema.Declarations) != 1 {
+		t.Fatalf("expected 1 declaration, got %d", len(schema.Declarations))
+	}
+
+	model, ok := schema.Declarations[0].(*ModelDeclaration)
+	if !ok {
+		t.Fatalf("expected ModelDeclaration, got %T", schema.Declarations[0])
+	}
+
+	// Should have @@id attribute
+	if len(model.Attributes) != 1 {
+		t.Fatalf("expected 1 model attribute, got %d", len(model.Attributes))
+	}
+
+	idAttr := model.Attributes[0]
+	if idAttr.Name != "id" {
+		t.Errorf("expected @@id attribute, got @@%s", idAttr.Name)
+	}
+
+	// Check array argument
+	if len(idAttr.Args) != 1 {
+		t.Fatalf("expected 1 argument, got %d", len(idAttr.Args))
+	}
+
+	fields, ok := idAttr.Args[0].Value.([]string)
+	if !ok {
+		t.Fatalf("expected []string argument, got %T", idAttr.Args[0].Value)
+	}
+
+	expected := []string{"userId", "roleId"}
+	if len(fields) != len(expected) {
+		t.Fatalf("expected %d fields, got %d", len(expected), len(fields))
+	}
+
+	for i, exp := range expected {
+		if fields[i] != exp {
+			t.Errorf("field %d: expected %q, got %q", i, exp, fields[i])
+		}
+	}
+}
+
+func TestParser_CompositeID_ThreeColumns(t *testing.T) {
+	input := `
+model OrderItem {
+  orderId  Int
+  itemId   Int
+  revision Int
+
+  @@id([orderId, itemId, revision])
+}
+`
+	parser := NewParser(input)
+	schema, err := parser.ParseSchema()
+
+	if err != nil {
+		t.Fatalf("parser error: %v", err)
+	}
+
+	model := schema.Declarations[0].(*ModelDeclaration)
+	idAttr := model.Attributes[0]
+	fields := idAttr.Args[0].Value.([]string)
+
+	expected := []string{"orderId", "itemId", "revision"}
+	if len(fields) != len(expected) {
+		t.Fatalf("expected %d fields, got %d", len(expected), len(fields))
+	}
+
+	for i, exp := range expected {
+		if fields[i] != exp {
+			t.Errorf("field %d: expected %q, got %q", i, exp, fields[i])
+		}
+	}
+}
