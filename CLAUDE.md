@@ -30,11 +30,18 @@ make lint             # golangci-lint (if installed)
 
 # CLI usage
 dryft init                     # Initialize config and state directory
-dryft db pull                  # Introspect PostgreSQL → generate schema.prisma
-dryft migration create <name>  # Generate Goose migration from schema diff
+dryft db pull                  # Introspect PostgreSQL → generate schema.prisma (requires DB)
+dryft migration create <name>  # Generate migration from schema diff (100% offline)
+  --allow-destructive          # Allow DROP operations
 dryft schema diff              # Preview changes between schemas
 dryft validate                 # Validate Prisma schema
 ```
+
+**Migration Generation (100% Offline):**
+- Uses migration history from `migrations/` directory
+- Empty migrations → first migration (CREATE TABLE all)
+- Existing migrations → incremental migration (ALTER TABLE)
+- No database connection required
 
 **Integration tests require Docker** — testcontainers spins up PostgreSQL. Use `make test-short` during development to skip them.
 

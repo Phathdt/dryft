@@ -30,3 +30,29 @@ func normalizeExpression(expr string) string {
 
 	return s
 }
+
+// NormalizeLiteral normalizes default literal values for comparison.
+// Handles enum casts, quotes, and common variations.
+func NormalizeLiteral(literal string) string {
+	if literal == "" {
+		return ""
+	}
+
+	normalized := literal
+
+	// Strip type casts (e.g., 'user'::user_role → 'user')
+	if idx := strings.Index(normalized, "::"); idx != -1 {
+		normalized = normalized[:idx]
+	}
+
+	// Trim whitespace
+	normalized = strings.TrimSpace(normalized)
+
+	// Remove surrounding single quotes
+	normalized = strings.Trim(normalized, "'")
+
+	// Convert to lowercase for case-insensitive comparison
+	normalized = strings.ToLower(normalized)
+
+	return normalized
+}

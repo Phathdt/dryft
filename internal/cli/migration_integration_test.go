@@ -2,176 +2,367 @@ package cli
 
 import (
 	"context"
-	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/phathdt/dryft/internal/diff"
-	"github.com/phathdt/dryft/internal/introspect/postgres"
-	"github.com/phathdt/dryft/internal/prisma"
-	"github.com/phathdt/dryft/internal/schema"
-	"github.com/phathdt/dryft/internal/sql"
-	sqlpostgres "github.com/phathdt/dryft/internal/sql/postgres"
-	"github.com/phathdt/dryft/internal/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestMigrationCreate_DatabaseIntrospection verifies the fix:
-// When a table already exists in the database, migration create should generate
-// ALTER TABLE statements, not CREATE TABLE statements.
-func TestMigrationCreate_DatabaseIntrospection(t *testing.T) {
+// TestMigrationCreate_WithMigrationHistory tests incremental migration generation
+// using existing migration files (100% offline, no DB connection).
+func TestMigrationCreate_WithMigrationHistory(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
 
-	ctx := context.Background()
+	tmpDir := t.TempDir()
+	oldCwd, _ := os.Getwd()
+	defer os.Chdir(oldCwd)
+	os.Chdir(tmpDir)
 
-	// Setup test database with a table
-	pgContainer, err := testutil.GetSharedContainer(ctx)
+	// Create migrations directory with existing migration
+	migrationsDir := "migrations"
+	err := os.MkdirAll(migrationsDir, 0755)
 	require.NoError(t, err)
 
-	dbName := "test_migration_fix"
-	setupConn, err := pgx.Connect(ctx, pgContainer.ConnString)
-	require.NoError(t, err)
-	_, _ = setupConn.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE)", dbName))
-	_, err = setupConn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s", dbName))
-	setupConn.Close(ctx)
-	require.NoError(t, err)
+	// Create initial migration (users table)
+	initialMigration := `-- +goose Up
+CREATE TABLE "User" (
+	id SERIAL PRIMARY KEY,
+	email TEXT NOT NULL
+);
 
-	testDBConnStr := strings.Replace(pgContainer.ConnString, "/testdb", "/"+dbName, 1)
-
-	t.Cleanup(func() {
-		conn, _ := pgx.Connect(ctx, pgContainer.ConnString)
-		if conn != nil {
-			conn.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE)", dbName))
-			conn.Close(ctx)
-		}
-	})
-
-	// Create initial table
-	conn, err := pgx.Connect(ctx, testDBConnStr)
-	require.NoError(t, err)
-	_, err = conn.Exec(ctx, `
-		CREATE TABLE posts (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			title VARCHAR(255) NOT NULL
-		)
-	`)
-	conn.Close(ctx)
+-- +goose Down
+DROP TABLE "User";
+`
+	err = os.WriteFile(filepath.Join(migrationsDir, "20240101000000_create_users.sql"), []byte(initialMigration), 0644)
 	require.NoError(t, err)
 
-	// Scenario 1: Old buggy behavior - using empty schema as previousSchema
-	emptySchema := &schema.Schema{
-		Tables: []schema.Table{},
-		Enums:  []schema.Enum{},
-	}
-
-	// Scenario 2: Fixed behavior - introspect database for previousSchema
-	intr, err := postgres.NewPostgresIntrospector(ctx, testDBConnStr)
-	require.NoError(t, err)
-	defer intr.Close()
-
-	actualSchema, err := intr.Introspect(ctx)
-	require.NoError(t, err)
-	require.NotEmpty(t, actualSchema.Tables)
-	require.Equal(t, "posts", actualSchema.Tables[0].Name)
-
-	// Create a modified schema: add bio column
-	writer := prisma.NewWriter(prisma.DefaultNamingConvention())
-	prismaSchema, err := writer.Write(actualSchema)
+	// Create schema.prisma with new column
+	schemaDir := "prisma"
+	err = os.MkdirAll(schemaDir, 0755)
 	require.NoError(t, err)
 
-	// Insert bio column after title line - find the line with title field and add bio after it
-	lines := strings.Split(prismaSchema, "\n")
-	var modifiedLines []string
-	for _, line := range lines {
-		modifiedLines = append(modifiedLines, line)
-		if strings.Contains(line, "title") && strings.Contains(line, "String") {
-			// Add bio field with same indentation
-			modifiedLines = append(modifiedLines, "  bio   String? @db.Text")
-		}
-	}
-	modifiedPrisma := strings.Join(modifiedLines, "\n")
-
-	parseResult, err := prisma.Parse(modifiedPrisma)
-	require.NoError(t, err)
-	modifiedSchema := parseResult.Schema
-
-	// Diff with empty (buggy) vs actual (fixed)
-	differ := diff.NewDiffer(nil)
-
-	opsWithEmpty, err := differ.Diff(emptySchema, modifiedSchema)
-	require.NoError(t, err)
-
-	opsWithActual, err := differ.Diff(actualSchema, modifiedSchema)
-	require.NoError(t, err)
-
-	// Plan operations
-	planner := diff.NewPlanner()
-	planWithEmpty, _ := planner.Plan(opsWithEmpty)
-	planWithActual, _ := planner.Plan(opsWithActual)
-
-	// Generate SQL
-	gen := sqlpostgres.NewGenerator(sql.GeneratorOptions{})
-	sqlEmpty, _ := gen.Generate(planWithEmpty.Operations)
-	sqlActual, _ := gen.Generate(planWithActual.Operations)
-
-	sqlEmptyStr := strings.Join(sqlEmpty, "\n")
-	sqlActualStr := strings.Join(sqlActual, "\n")
-
-	// Key assertions: the fix should eliminate CREATE TABLE for existing tables
-	require.Contains(t, sqlEmptyStr, "CREATE TABLE", "buggy behavior: uses empty schema, creates table")
-	require.NotContains(t, sqlActualStr, "CREATE TABLE posts", "fixed behavior: introspects DB, only alters")
-	require.Contains(t, sqlActualStr, "ALTER TABLE", "fixed behavior: generates ALTER statements")
-	require.Contains(t, sqlActualStr, "bio", "fixed behavior: adds the bio column")
+	schemaContent := `datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-func TestMigrationCreate_EmptyDatabase(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+model User {
+  id    Int    @id @default(autoincrement())
+  email String
+  bio   String?
+}
+`
+	schemaFile := filepath.Join(schemaDir, "schema.prisma")
+	err = os.WriteFile(schemaFile, []byte(schemaContent), 0644)
+	require.NoError(t, err)
 
+	// Create config (database URL not used for offline migration create)
+	configContent := `database:
+  provider: postgresql
+  url: "postgresql://localhost:5432/unused"
+
+schema:
+  file: prisma/schema.prisma
+
+migration:
+  directory: migrations
+  format: goose
+  naming: timestamp
+`
+	err = os.WriteFile(".dryft.yaml", []byte(configContent), 0644)
+	require.NoError(t, err)
+
+	// Run migration create (100% offline)
+	app := NewApp()
 	ctx := context.Background()
 
-	pgContainer, err := testutil.GetSharedContainer(ctx)
+	err = app.Run(ctx, []string{"dryft", "migration", "create", "add_bio"})
 	require.NoError(t, err)
 
-	dbName := "test_empty_migration"
-	setupConn, err := pgx.Connect(ctx, pgContainer.ConnString)
+	// Verify migration was created
+	files, err := os.ReadDir(migrationsDir)
 	require.NoError(t, err)
-	_, _ = setupConn.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE)", dbName))
-	_, err = setupConn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s", dbName))
-	setupConn.Close(ctx)
-	require.NoError(t, err)
+	assert.Len(t, files, 2, "should have 2 migrations (initial + new)")
 
-	testDBConnStr := strings.Replace(pgContainer.ConnString, "/testdb", "/"+dbName, 1)
-
-	t.Cleanup(func() {
-		conn, _ := pgx.Connect(ctx, pgContainer.ConnString)
-		if conn != nil {
-			conn.Exec(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE)", dbName))
-			conn.Close(ctx)
+	// Find the new migration
+	var newMigrationContent string
+	for _, file := range files {
+		if strings.Contains(file.Name(), "add_bio") {
+			content, err := os.ReadFile(filepath.Join(migrationsDir, file.Name()))
+			require.NoError(t, err)
+			newMigrationContent = string(content)
+			break
 		}
-	})
+	}
 
-	// Introspect empty database
-	intr, err := postgres.NewPostgresIntrospector(ctx, testDBConnStr)
-	require.NoError(t, err)
-	defer intr.Close()
+	require.NotEmpty(t, newMigrationContent, "new migration should exist")
 
-	emptySchema, err := intr.Introspect(ctx)
-	require.NoError(t, err)
-
-	require.Empty(t, emptySchema.Tables)
-	require.Empty(t, emptySchema.Enums)
+	// Verify migration contains ALTER, not CREATE
+	assert.Contains(t, newMigrationContent, "ALTER TABLE", "should generate ALTER statement")
+	assert.Contains(t, newMigrationContent, "ADD COLUMN", "should add new column")
+	assert.Contains(t, newMigrationContent, "bio", "should reference bio column")
+	assert.NotContains(t, newMigrationContent, "CREATE TABLE \"User\"", "should NOT recreate table")
 }
 
-func TestMigrationCreate_DestructiveProtection(t *testing.T) {
+// TestMigrationCreate_EmptyMigrations_FirstMigration tests first migration generation
+// with empty migrations directory (100% offline).
+func TestMigrationCreate_EmptyMigrations_FirstMigration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
 
-	// TODO: Implement when we have proper state management
-	t.Skip("destructive protection test requires state management")
+	tmpDir := t.TempDir()
+	oldCwd, _ := os.Getwd()
+	defer os.Chdir(oldCwd)
+	os.Chdir(tmpDir)
+
+	// Create empty migrations directory
+	migrationsDir := "migrations"
+	err := os.MkdirAll(migrationsDir, 0755)
+	require.NoError(t, err)
+
+	// Create schema.prisma
+	schemaDir := "prisma"
+	err = os.MkdirAll(schemaDir, 0755)
+	require.NoError(t, err)
+
+	schemaContent := `datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id    Int    @id @default(autoincrement())
+  email String
+}
+`
+	schemaFile := filepath.Join(schemaDir, "schema.prisma")
+	err = os.WriteFile(schemaFile, []byte(schemaContent), 0644)
+	require.NoError(t, err)
+
+	// Create config (database URL not used for offline migration create)
+	configContent := `database:
+  provider: postgresql
+  url: "postgresql://localhost:5432/unused"
+
+schema:
+  file: prisma/schema.prisma
+
+migration:
+  directory: migrations
+  format: goose
+  naming: timestamp
+`
+	err = os.WriteFile(".dryft.yaml", []byte(configContent), 0644)
+	require.NoError(t, err)
+
+	// Run migration create (100% offline, first migration)
+	app := NewApp()
+	ctx := context.Background()
+
+	err = app.Run(ctx, []string{"dryft", "migration", "create", "initial"})
+	require.NoError(t, err)
+
+	// Verify migration was created
+	files, err := os.ReadDir(migrationsDir)
+	require.NoError(t, err)
+	assert.Len(t, files, 1, "should have 1 migration")
+
+	// Read migration content
+	content, err := os.ReadFile(filepath.Join(migrationsDir, files[0].Name()))
+	require.NoError(t, err)
+	migrationContent := string(content)
+
+	// Verify migration contains CREATE TABLE (full schema creation)
+	assert.Contains(t, migrationContent, "CREATE TABLE", "should generate CREATE TABLE")
+	assert.Contains(t, migrationContent, "User", "should create User table")
+	assert.Contains(t, migrationContent, "email", "should include email column")
+}
+
+// TestMigrationCreate_NoDBConnection tests that migration create works 100% offline.
+func TestMigrationCreate_NoDBConnection(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	tmpDir := t.TempDir()
+	oldCwd, _ := os.Getwd()
+	defer os.Chdir(oldCwd)
+	os.Chdir(tmpDir)
+
+	// Setup with invalid DATABASE_URL to ensure no connection attempted
+	migrationsDir := "migrations"
+	err := os.MkdirAll(migrationsDir, 0755)
+	require.NoError(t, err)
+
+	// Create existing migration
+	existingMigration := `-- +goose Up
+CREATE TABLE "Product" (
+	id SERIAL PRIMARY KEY,
+	name TEXT NOT NULL
+);
+
+-- +goose Down
+DROP TABLE "Product";
+`
+	err = os.WriteFile(filepath.Join(migrationsDir, "20240101000000_create_products.sql"), []byte(existingMigration), 0644)
+	require.NoError(t, err)
+
+	// Create schema with new field
+	schemaDir := "prisma"
+	err = os.MkdirAll(schemaDir, 0755)
+	require.NoError(t, err)
+
+	schemaContent := `datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+}
+`
+	err = os.WriteFile(filepath.Join(schemaDir, "schema.prisma"), []byte(schemaContent), 0644)
+	require.NoError(t, err)
+
+	// Create config with INVALID database URL (should not be used)
+	configContent := `database:
+  provider: postgresql
+  url: "postgresql://invalid:invalid@nonexistent:9999/invalid"
+
+schema:
+  file: prisma/schema.prisma
+
+migration:
+  directory: migrations
+  format: goose
+  naming: timestamp
+`
+	err = os.WriteFile(".dryft.yaml", []byte(configContent), 0644)
+	require.NoError(t, err)
+
+	// Run migration create - should work without DB connection
+	app := NewApp()
+	ctx := context.Background()
+
+	err = app.Run(ctx, []string{"dryft", "migration", "create", "add_description"})
+	require.NoError(t, err, "should work offline without database connection")
+
+	// Verify new migration was created
+	files, err := os.ReadDir(migrationsDir)
+	require.NoError(t, err)
+	assert.Len(t, files, 2, "should have 2 migrations")
+}
+
+// TestMigrationCreate_MultipleMigrations tests building schema from multiple migrations.
+func TestMigrationCreate_MultipleMigrations(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	tmpDir := t.TempDir()
+	oldCwd, _ := os.Getwd()
+	defer os.Chdir(oldCwd)
+	os.Chdir(tmpDir)
+
+	// Create migrations directory
+	migrationsDir := "migrations"
+	err := os.MkdirAll(migrationsDir, 0755)
+	require.NoError(t, err)
+
+	// Create first migration (users table)
+	migration1 := `-- +goose Up
+CREATE TABLE "User" (
+	id SERIAL PRIMARY KEY,
+	email TEXT NOT NULL
+);
+
+-- +goose Down
+DROP TABLE "User";
+`
+	err = os.WriteFile(filepath.Join(migrationsDir, "20240101000000_create_users.sql"), []byte(migration1), 0644)
+	require.NoError(t, err)
+
+	// Create second migration (add name column)
+	migration2 := `-- +goose Up
+ALTER TABLE "User" ADD COLUMN name TEXT;
+
+-- +goose Down
+ALTER TABLE "User" DROP COLUMN name;
+`
+	err = os.WriteFile(filepath.Join(migrationsDir, "20240102000000_add_name.sql"), []byte(migration2), 0644)
+	require.NoError(t, err)
+
+	// Create schema with additional column
+	schemaDir := "prisma"
+	err = os.MkdirAll(schemaDir, 0755)
+	require.NoError(t, err)
+
+	schemaContent := `datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id    Int     @id @default(autoincrement())
+  email String
+  name  String?
+  bio   String?
+}
+`
+	err = os.WriteFile(filepath.Join(schemaDir, "schema.prisma"), []byte(schemaContent), 0644)
+	require.NoError(t, err)
+
+	// Create config
+	configContent := `database:
+  provider: postgresql
+  url: "postgresql://localhost:5432/unused"
+
+schema:
+  file: prisma/schema.prisma
+
+migration:
+  directory: migrations
+  format: goose
+  naming: timestamp
+`
+	err = os.WriteFile(".dryft.yaml", []byte(configContent), 0644)
+	require.NoError(t, err)
+
+	// Run migration create
+	app := NewApp()
+	ctx := context.Background()
+
+	err = app.Run(ctx, []string{"dryft", "migration", "create", "add_bio"})
+	require.NoError(t, err)
+
+	// Verify migration was created
+	files, err := os.ReadDir(migrationsDir)
+	require.NoError(t, err)
+	assert.Len(t, files, 3, "should have 3 migrations")
+
+	// Find the new migration
+	var newMigrationContent string
+	for _, file := range files {
+		if strings.Contains(file.Name(), "add_bio") {
+			content, err := os.ReadFile(filepath.Join(migrationsDir, file.Name()))
+			require.NoError(t, err)
+			newMigrationContent = string(content)
+			break
+		}
+	}
+
+	require.NotEmpty(t, newMigrationContent, "new migration should exist")
+
+	// Should only add bio column (email and name already exist from previous migrations)
+	assert.Contains(t, newMigrationContent, "ALTER TABLE", "should generate ALTER")
+	assert.Contains(t, newMigrationContent, "bio", "should add bio column")
+	assert.NotContains(t, newMigrationContent, "CREATE TABLE", "should not recreate table")
 }
