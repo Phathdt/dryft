@@ -298,3 +298,217 @@ func TestIntegration_TypeMapping(t *testing.T) {
 		}
 	}
 }
+
+// TestIntegration_CompositePK_RoundTrip tests full round-trip integrity for composite primary keys.
+func TestIntegration_CompositePK_RoundTrip(t *testing.T) {
+	// Start with internal schema (as DB introspector produces)
+	originalSchema := &schema.Schema{
+		Tables: []schema.Table{
+			{
+				Name: "user_roles",
+				Columns: []schema.Column{
+					{Name: "user_id", Type: schema.DataType{Kind: schema.TypeInt32}, Nullable: false},
+					{Name: "role_id", Type: schema.DataType{Kind: schema.TypeInt32}, Nullable: false},
+					{Name: "granted_at", Type: schema.DataType{Kind: schema.TypeTimestampTZ}, Nullable: false},
+				},
+				PrimaryKey: &schema.PrimaryKey{
+					Columns: []string{"user_id", "role_id"},
+				},
+			},
+		},
+	}
+
+	// Step 1: Write to Prisma schema
+	writer := NewWriter(DefaultNamingConvention())
+	prismaOutput, err := writer.Write(originalSchema)
+	if err != nil {
+		t.Fatalf("Write() error: %v", err)
+	}
+
+	// Verify output contains @@id
+	if !strings.Contains(prismaOutput, "@@id([userId, roleId])") {
+		t.Errorf("Expected @@id([userId, roleId]) in output:\n%s", prismaOutput)
+	}
+
+	// Step 2: Parse back
+	parser := NewParser(prismaOutput)
+	ast, err := parser.ParseSchema()
+	if err != nil {
+		t.Fatalf("Parse() error: %v", err)
+	}
+
+	// Step 3: Convert back to internal schema
+	converter := NewConverter()
+	roundTripSchema, err := converter.Convert(ast)
+	if err != nil {
+		t.Fatalf("Convert() error: %v", err)
+	}
+
+	// Step 4: Verify round-trip integrity
+	if len(roundTripSchema.Tables) != 1 {
+		t.Fatalf("expected 1 table after round-trip, got %d", len(roundTripSchema.Tables))
+	}
+
+	table := roundTripSchema.Tables[0]
+	if table.PrimaryKey == nil {
+		t.Fatal("expected primary key after round-trip")
+	}
+
+	// Check columns match (order matters)
+	expected := []string{"user_id", "role_id"}
+	if len(table.PrimaryKey.Columns) != len(expected) {
+		t.Errorf("PK columns count: expected %d, got %d", len(expected), len(table.PrimaryKey.Columns))
+	}
+	for i, col := range expected {
+		if i >= len(table.PrimaryKey.Columns) || table.PrimaryKey.Columns[i] != col {
+			t.Errorf("PK column[%d]: expected %q, got %q", i, col, table.PrimaryKey.Columns[i])
+		}
+	}
+}
+
+// TestIntegration_ThreeColumnPK_RoundTrip tests round-trip with 3-column composite PK.
+func TestIntegration_ThreeColumnPK_RoundTrip(t *testing.T) {
+	originalSchema := &schema.Schema{
+		Tables: []schema.Table{
+			{
+				Name: "order_items",
+				Columns: []schema.Column{
+					{Name: "order_id", Type: schema.DataType{Kind: schema.TypeInt32}, Nullable: false},
+					{Name: "item_id", Type: schema.DataType{Kind: schema.TypeInt32}, Nullable: false},
+					{Name: "revision", Type: schema.DataType{Kind: schema.TypeInt32}, Nullable: false},
+				},
+				PrimaryKey: &schema.PrimaryKey{
+					Columns: []string{"order_id", "item_id", "revision"},
+				},
+			},
+		},
+	}
+
+	// Write → Parse → Convert
+	writer := NewWriter(DefaultNamingConvention())
+	prismaOutput, err := writer.Write(originalSchema)
+	if err != nil {
+		t.Fatalf("Write() error: %v", err)
+	}
+
+	parser := NewParser(prismaOutput)
+	ast, err := parser.ParseSchema()
+	if err != nil {
+		t.Fatalf("Parse() error: %v", err)
+	}
+
+	converter := NewConverter()
+	roundTripSchema, err := converter.Convert(ast)
+	if err != nil {
+		t.Fatalf("Convert() error: %v", err)
+	}
+
+	// Verify
+	table := roundTripSchema.Tables[0]
+	expected := []string{"order_id", "item_id", "revision"}
+	if len(table.PrimaryKey.Columns) != len(expected) {
+		t.Errorf("expected %d PK columns, got %d", len(expected), len(table.PrimaryKey.Columns))
+	}
+	for i, col := range expected {
+		if i >= len(table.PrimaryKey.Columns) || table.PrimaryKey.Columns[i] != col {
+			t.Errorf("PK column[%d]: expected %q, got %q", i, col, table.PrimaryKey.Columns[i])
+		}
+	}
+}
+
+// TestIntegration_CompositePK_WithOtherConstraints tests composite PK with UNIQUE and INDEX.
+func TestIntegration_CompositePK_WithOtherConstraints(t *testing.T) {
+	originalSchema := &schema.Schema{
+		Tables: []schema.Table{
+			{
+				Name: "user_roles",
+				Columns: []schema.Column{
+					{Name: "user_id", Type: schema.DataType{Kind: schema.TypeInt32}, Nullable: false},
+					{Name: "role_id", Type: schema.DataType{Kind: schema.TypeInt32}, Nullable: false},
+					{Name: "granted_at", Type: schema.DataType{Kind: schema.TypeTimestampTZ}, Nullable: false},
+					{Name: "granted_by", Type: schema.DataType{Kind: schema.TypeInt32}, Nullable: true},
+				},
+				PrimaryKey: &schema.PrimaryKey{
+					Columns: []string{"user_id", "role_id"},
+				},
+				Constraints: []schema.Constraint{
+					{
+						Type:    schema.ConstraintUnique,
+						Columns: []string{"user_id", "granted_at"},
+					},
+				},
+				Indexes: []schema.Index{
+					{
+						Columns: []schema.IndexColumn{
+							{Name: "role_id"},
+							{Name: "granted_at"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Round-trip
+	writer := NewWriter(DefaultNamingConvention())
+	prismaOutput, err := writer.Write(originalSchema)
+	if err != nil {
+		t.Fatalf("Write() error: %v", err)
+	}
+
+	parser := NewParser(prismaOutput)
+	ast, err := parser.ParseSchema()
+	if err != nil {
+		t.Fatalf("Parse() error: %v", err)
+	}
+
+	converter := NewConverter()
+	roundTripSchema, err := converter.Convert(ast)
+	if err != nil {
+		t.Fatalf("Convert() error: %v", err)
+	}
+
+	table := roundTripSchema.Tables[0]
+
+	// Verify PK
+	expectedPK := []string{"user_id", "role_id"}
+	if len(table.PrimaryKey.Columns) != len(expectedPK) {
+		t.Errorf("PK count: expected %d, got %d", len(expectedPK), len(table.PrimaryKey.Columns))
+	}
+	for i, col := range expectedPK {
+		if i >= len(table.PrimaryKey.Columns) || table.PrimaryKey.Columns[i] != col {
+			t.Errorf("PK column[%d]: expected %q, got %q", i, col, table.PrimaryKey.Columns[i])
+		}
+	}
+
+	// Verify UNIQUE constraint
+	uniqueCount := 0
+	for _, c := range table.Constraints {
+		if c.Type == schema.ConstraintUnique {
+			uniqueCount++
+			expectedUnique := []string{"user_id", "granted_at"}
+			if len(c.Columns) != len(expectedUnique) {
+				t.Errorf("UNIQUE count: expected %d columns, got %d", len(expectedUnique), len(c.Columns))
+			}
+			for i, col := range expectedUnique {
+				if i >= len(c.Columns) || c.Columns[i] != col {
+					t.Errorf("UNIQUE column[%d]: expected %q, got %q", i, col, c.Columns[i])
+				}
+			}
+		}
+	}
+	if uniqueCount != 1 {
+		t.Errorf("expected 1 unique constraint, got %d", uniqueCount)
+	}
+
+	// Verify INDEX
+	if len(table.Indexes) != 1 {
+		t.Fatalf("expected 1 index, got %d", len(table.Indexes))
+	}
+	if table.Indexes[0].Columns[0].Name != "role_id" {
+		t.Errorf("index col 0: expected 'role_id', got %q", table.Indexes[0].Columns[0].Name)
+	}
+	if table.Indexes[0].Columns[1].Name != "granted_at" {
+		t.Errorf("index col 1: expected 'granted_at', got %q", table.Indexes[0].Columns[1].Name)
+	}
+}

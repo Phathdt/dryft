@@ -109,6 +109,34 @@ func (c *Converter) convertModel(model *ModelDeclaration) (*schema.Table, error)
 		table.Columns = append(table.Columns, *col)
 	}
 
+	// Build Prisma field name → DB column name mapping (scalar fields only)
+	prismaToDbFieldMap := make(map[string]string)
+	scalarFields := make(map[string]bool)
+	relationFields := make(map[string]bool)
+
+	for _, field := range model.Fields {
+		// Track relation fields separately
+		if c.isRelationField(field) {
+			relationFields[field.Name] = true
+			continue
+		}
+
+		prismaFieldName := field.Name
+		dbColumnName := prismaFieldName // default: same as Prisma name
+
+		// Check for @map attribute
+		for _, attr := range field.Attributes {
+			if attr.Name == "map" && len(attr.Args) > 0 {
+				if mapped, ok := attr.Args[0].Value.(string); ok {
+					dbColumnName = mapped
+					break
+				}
+			}
+		}
+		prismaToDbFieldMap[prismaFieldName] = dbColumnName
+		scalarFields[prismaFieldName] = true
+	}
+
 	// Process model-level attributes
 	for _, attr := range model.Attributes {
 		switch attr.Name {
@@ -116,8 +144,12 @@ func (c *Converter) convertModel(model *ModelDeclaration) (*schema.Table, error)
 			// Composite primary key: @@id([field1, field2])
 			if len(attr.Args) > 0 {
 				if fields, ok := attr.Args[0].Value.([]string); ok {
+					dbColumns, err := c.mapFieldNames(fields, prismaToDbFieldMap, scalarFields, relationFields, model.Name)
+					if err != nil {
+						return nil, err
+					}
 					table.PrimaryKey = &schema.PrimaryKey{
-						Columns: fields,
+						Columns: dbColumns,
 					}
 				}
 			}
@@ -125,9 +157,13 @@ func (c *Converter) convertModel(model *ModelDeclaration) (*schema.Table, error)
 			// Composite unique constraint: @@unique([field1, field2])
 			if len(attr.Args) > 0 {
 				if fields, ok := attr.Args[0].Value.([]string); ok {
+					dbColumns, err := c.mapFieldNames(fields, prismaToDbFieldMap, scalarFields, relationFields, model.Name)
+					if err != nil {
+						return nil, err
+					}
 					table.Constraints = append(table.Constraints, schema.Constraint{
 						Type:    schema.ConstraintUnique,
-						Columns: fields,
+						Columns: dbColumns,
 					})
 				}
 			}
@@ -135,9 +171,13 @@ func (c *Converter) convertModel(model *ModelDeclaration) (*schema.Table, error)
 			// Index: @@index([field1, field2])
 			if len(attr.Args) > 0 {
 				if fields, ok := attr.Args[0].Value.([]string); ok {
-					indexCols := make([]schema.IndexColumn, len(fields))
-					for i, f := range fields {
-						indexCols[i] = schema.IndexColumn{Name: f}
+					dbColumns, err := c.mapFieldNames(fields, prismaToDbFieldMap, scalarFields, relationFields, model.Name)
+					if err != nil {
+						return nil, err
+					}
+					indexCols := make([]schema.IndexColumn, len(dbColumns))
+					for i, col := range dbColumns {
+						indexCols[i] = schema.IndexColumn{Name: col}
 					}
 					table.Indexes = append(table.Indexes, schema.Index{
 						Columns: indexCols,
@@ -168,6 +208,23 @@ func (c *Converter) convertModel(model *ModelDeclaration) (*schema.Table, error)
 	}
 
 	return table, nil
+}
+
+// mapFieldNames converts Prisma field names to DB column names
+func (c *Converter) mapFieldNames(prismaFields []string, fieldMap map[string]string, scalarFields map[string]bool, relationFields map[string]bool, modelName string) ([]string, error) {
+	dbColumns := make([]string, len(prismaFields))
+	for i, prismaField := range prismaFields {
+		// Check if field is a relation
+		if relationFields[prismaField] {
+			return nil, fmt.Errorf("model %s: field %q is a relation field and cannot be used in model attributes (@@id, @@unique, @@index)", modelName, prismaField)
+		}
+		// Check if field exists in scalar fields
+		if !scalarFields[prismaField] {
+			return nil, fmt.Errorf("model %s: field %q referenced in model attribute does not exist", modelName, prismaField)
+		}
+		dbColumns[i] = fieldMap[prismaField]
+	}
+	return dbColumns, nil
 }
 
 // convertField converts a Field to schema.Column.
