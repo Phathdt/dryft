@@ -113,7 +113,6 @@ func (p *Parser) parseCreateTable(tokens []string, sql string) (*CreateTable, er
 		return nil, &ParseError{SQL: sql, Message: "missing table name"}
 	}
 	stmt.Name = unquoteIdentifier(tokens[idx])
-	idx++
 
 	// Find column definitions within parentheses
 	parenStart := strings.Index(sql[strings.Index(sql, stmt.Name)+len(stmt.Name):], "(")
@@ -258,12 +257,13 @@ func (p *Parser) parseColumnDef(def string, sql string) (ColumnDef, error) {
 						break
 					}
 					action := strings.ToUpper(tokens[idx+1])
-					if action == "DELETE" {
+					switch action {
+					case "DELETE":
 						if idx+2 < len(tokens) {
 							fk.OnDelete = parseReferentialAction(tokens[idx+2:])
 							idx += 2 + countActionTokens(tokens[idx+2:])
 						}
-					} else if action == "UPDATE" {
+					case "UPDATE":
 						if idx+2 < len(tokens) {
 							fk.OnUpdate = parseReferentialAction(tokens[idx+2:])
 							idx += 2 + countActionTokens(tokens[idx+2:])
@@ -369,12 +369,13 @@ func (p *Parser) parseTableConstraint(def string, sql string) (TableConstraint, 
 								break
 							}
 							action := strings.ToUpper(tokens[idx+1])
-							if action == "DELETE" {
+							switch action {
+							case "DELETE":
 								if idx+2 < len(tokens) {
 									constraint.OnDelete = parseReferentialAction(tokens[idx+2:])
 									idx += 2 + countActionTokens(tokens[idx+2:])
 								}
-							} else if action == "UPDATE" {
+							case "UPDATE":
 								if idx+2 < len(tokens) {
 									constraint.OnUpdate = parseReferentialAction(tokens[idx+2:])
 									idx += 2 + countActionTokens(tokens[idx+2:])
@@ -1006,9 +1007,10 @@ func extractParentheses(s string) string {
 
 	depth := 0
 	for i := start; i < len(s); i++ {
-		if s[i] == '(' {
+		switch s[i] {
+		case '(':
 			depth++
-		} else if s[i] == ')' {
+		case ')':
 			depth--
 			if depth == 0 {
 				return s[start+1 : i]

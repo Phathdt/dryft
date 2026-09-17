@@ -195,8 +195,7 @@ func loadPreviousSchemaFromMigrations(cfg *config.Config) (*schema.Schema, error
 	s, err := migration.LoadSchemaFromMigrations(migrationDir)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"failed to load schema from migrations in %s: %w\n\n"+
-				"Fix the migration file syntax error and try again.",
+			"failed to load schema from migrations in %s: %w; fix the migration file syntax error and try again",
 			migrationDir, err,
 		)
 	}
