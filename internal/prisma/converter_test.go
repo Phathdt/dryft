@@ -964,3 +964,61 @@ model Post {
 		t.Errorf("expected 'created_at', got %q", idx.Columns[1].Name)
 	}
 }
+
+func TestConverter_IndexWithName(t *testing.T) {
+	input := `
+model Order {
+  id        String   @id
+  userId    String   @map("user_id")
+  status    String
+  createdAt DateTime @map("created_at")
+
+  @@index([userId])
+  @@index([status, createdAt], name: "idx_status_created")
+}
+`
+	parser := NewParser(input)
+	ast, err := parser.ParseSchema()
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	converter := NewConverter()
+	s, err := converter.Convert(ast)
+	if err != nil {
+		t.Fatalf("convert error: %v", err)
+	}
+
+	table := s.Tables[0]
+
+	if len(table.Indexes) != 2 {
+		t.Fatalf("expected 2 indexes, got %d", len(table.Indexes))
+	}
+
+	// First index: no name (auto-generated)
+	idx1 := table.Indexes[0]
+	if idx1.Name != "" {
+		t.Errorf("expected empty name for first index, got %q", idx1.Name)
+	}
+	if len(idx1.Columns) != 1 {
+		t.Fatalf("expected 1 column, got %d", len(idx1.Columns))
+	}
+	if idx1.Columns[0].Name != "user_id" {
+		t.Errorf("expected 'user_id', got %q", idx1.Columns[0].Name)
+	}
+
+	// Second index: named
+	idx2 := table.Indexes[1]
+	if idx2.Name != "idx_status_created" {
+		t.Errorf("expected 'idx_status_created', got %q", idx2.Name)
+	}
+	if len(idx2.Columns) != 2 {
+		t.Fatalf("expected 2 columns, got %d", len(idx2.Columns))
+	}
+	if idx2.Columns[0].Name != "status" {
+		t.Errorf("expected 'status', got %q", idx2.Columns[0].Name)
+	}
+	if idx2.Columns[1].Name != "created_at" {
+		t.Errorf("expected 'created_at', got %q", idx2.Columns[1].Name)
+	}
+}

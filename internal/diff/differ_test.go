@@ -583,3 +583,189 @@ func TestDiffer_SequenceRefsEqual(t *testing.T) {
 		})
 	}
 }
+
+// TestDiffer_NewTableWithIndexes is a regression test for Issue #21.
+// Ensures that when a new table is created with indexes, separate CreateIndex
+// operations are generated (not just bundled in CreateTable).
+func TestDiffer_NewTableWithIndexes(t *testing.T) {
+	tests := []struct {
+		name     string
+		before   *schema.Schema
+		after    *schema.Schema
+		wantOps  int
+		checkOps func(*testing.T, []Operation)
+	}{
+		{
+			name: "new table with single index",
+			before: &schema.Schema{
+				Tables: []schema.Table{},
+			},
+			after: &schema.Schema{
+				Tables: []schema.Table{
+					{
+						Name: "users",
+						Columns: []schema.Column{
+							{Name: "id", Type: schema.DataType{Kind: schema.TypeUUID}},
+							{Name: "email", Type: schema.DataType{Kind: schema.TypeText}},
+						},
+						Indexes: []schema.Index{
+							{
+								Name:    "idx_users_email",
+								Columns: []schema.IndexColumn{{Name: "email"}},
+							},
+						},
+					},
+				},
+			},
+			wantOps: 2, // CreateTable + CreateIndex
+			checkOps: func(t *testing.T, ops []Operation) {
+				if len(ops) != 2 {
+					t.Fatalf("expected 2 operations, got %d", len(ops))
+				}
+
+				// First operation: CreateTable
+				if ops[0].Kind() != OpCreateTable {
+					t.Errorf("first operation should be CreateTable, got %v", ops[0].Kind())
+				}
+
+				// Second operation: CreateIndex
+				if ops[1].Kind() != OpCreateIndex {
+					t.Errorf("second operation should be CreateIndex, got %v", ops[1].Kind())
+				}
+
+				createIndex, ok := ops[1].(CreateIndex)
+				if !ok {
+					t.Fatal("second operation is not CreateIndex type")
+				}
+
+				if createIndex.Table != "users" {
+					t.Errorf("CreateIndex.Table = %q, want %q", createIndex.Table, "users")
+				}
+
+				if createIndex.Index.Name != "idx_users_email" {
+					t.Errorf("CreateIndex.Index.Name = %q, want %q", createIndex.Index.Name, "idx_users_email")
+				}
+			},
+		},
+		{
+			name: "new table with multiple indexes",
+			before: &schema.Schema{
+				Tables: []schema.Table{},
+			},
+			after: &schema.Schema{
+				Tables: []schema.Table{
+					{
+						Name: "orders",
+						Columns: []schema.Column{
+							{Name: "id", Type: schema.DataType{Kind: schema.TypeUUID}},
+							{Name: "user_id", Type: schema.DataType{Kind: schema.TypeUUID}},
+							{Name: "status", Type: schema.DataType{Kind: schema.TypeText}},
+							{Name: "created_at", Type: schema.DataType{Kind: schema.TypeTimestamp}},
+						},
+						Indexes: []schema.Index{
+							{
+								Name:    "idx_orders_user_id",
+								Columns: []schema.IndexColumn{{Name: "user_id"}},
+							},
+							{
+								Name: "idx_orders_status_created",
+								Columns: []schema.IndexColumn{
+									{Name: "status"},
+									{Name: "created_at"},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantOps: 3, // CreateTable + 2x CreateIndex
+			checkOps: func(t *testing.T, ops []Operation) {
+				if len(ops) != 3 {
+					t.Fatalf("expected 3 operations, got %d", len(ops))
+				}
+
+				// First operation: CreateTable
+				if ops[0].Kind() != OpCreateTable {
+					t.Errorf("first operation should be CreateTable, got %v", ops[0].Kind())
+				}
+
+				// Second and third: CreateIndex
+				for i := 1; i <= 2; i++ {
+					if ops[i].Kind() != OpCreateIndex {
+						t.Errorf("operation %d should be CreateIndex, got %v", i, ops[i].Kind())
+					}
+				}
+			},
+		},
+		{
+			name: "new table with composite index",
+			before: &schema.Schema{
+				Tables: []schema.Table{},
+			},
+			after: &schema.Schema{
+				Tables: []schema.Table{
+					{
+						Name: "user_roles",
+						Columns: []schema.Column{
+							{Name: "user_id", Type: schema.DataType{Kind: schema.TypeText}},
+							{Name: "role_id", Type: schema.DataType{Kind: schema.TypeText}},
+							{Name: "granted_at", Type: schema.DataType{Kind: schema.TypeTimestamp}},
+						},
+						PrimaryKey: &schema.PrimaryKey{
+							Columns: []string{"user_id", "role_id"},
+						},
+						Indexes: []schema.Index{
+							{
+								Name: "idx_role_granted",
+								Columns: []schema.IndexColumn{
+									{Name: "role_id"},
+									{Name: "granted_at"},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantOps: 2, // CreateTable + CreateIndex
+			checkOps: func(t *testing.T, ops []Operation) {
+				createIndex, ok := ops[1].(CreateIndex)
+				if !ok {
+					t.Fatal("second operation is not CreateIndex type")
+				}
+
+				if len(createIndex.Index.Columns) != 2 {
+					t.Errorf("index should have 2 columns, got %d", len(createIndex.Index.Columns))
+				}
+
+				if createIndex.Index.Columns[0].Name != "role_id" {
+					t.Errorf("first column = %q, want %q", createIndex.Index.Columns[0].Name, "role_id")
+				}
+
+				if createIndex.Index.Columns[1].Name != "granted_at" {
+					t.Errorf("second column = %q, want %q", createIndex.Index.Columns[1].Name, "granted_at")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := NewDiffer(nil)
+			ops, err := d.Diff(tt.before, tt.after)
+			if err != nil {
+				t.Fatalf("Diff() error = %v", err)
+			}
+
+			if len(ops) != tt.wantOps {
+				t.Errorf("got %d operations, want %d", len(ops), tt.wantOps)
+				for i, op := range ops {
+					t.Logf("  op[%d]: %v", i, op.Kind())
+				}
+			}
+
+			if tt.checkOps != nil {
+				tt.checkOps(t, ops)
+			}
+		})
+	}
+}

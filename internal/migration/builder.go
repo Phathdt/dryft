@@ -207,6 +207,11 @@ func (b *SchemaBuilder) applyCreateIndex(stmt *CreateIndex) error {
 	}
 
 	table.Indexes = append(table.Indexes, index)
+
+	// CRITICAL FIX: Save modified table back to map
+	// Without this, index changes are lost when Build() converts map to slice
+	b.tables[stmt.Table] = table
+
 	return nil
 }
 
