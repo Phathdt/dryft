@@ -168,7 +168,7 @@ func (c *Converter) convertModel(model *ModelDeclaration) (*schema.Table, error)
 				}
 			}
 		case "index":
-			// Index: @@index([field1, field2])
+			// Index: @@index([field1, field2], name: "idx_name")
 			if len(attr.Args) > 0 {
 				if fields, ok := attr.Args[0].Value.([]string); ok {
 					dbColumns, err := c.mapFieldNames(fields, prismaToDbFieldMap, scalarFields, relationFields, model.Name)
@@ -179,7 +179,20 @@ func (c *Converter) convertModel(model *ModelDeclaration) (*schema.Table, error)
 					for i, col := range dbColumns {
 						indexCols[i] = schema.IndexColumn{Name: col}
 					}
+
+					// Extract index name from named argument
+					indexName := ""
+					for _, arg := range attr.Args {
+						if arg.Name == "name" {
+							if name, ok := arg.Value.(string); ok {
+								indexName = name
+								break
+							}
+						}
+					}
+
 					table.Indexes = append(table.Indexes, schema.Index{
+						Name:    indexName,
 						Columns: indexCols,
 						Unique:  false,
 					})

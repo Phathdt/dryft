@@ -263,7 +263,16 @@ func (g *Generator) generateCreateIndex(op diff.CreateIndex) string {
 
 // generateDropIndex generates DROP INDEX statement.
 func (g *Generator) generateDropIndex(op diff.DropIndex) string {
-	return fmt.Sprintf("DROP INDEX %s;", quoteIdentifier(op.Name))
+	indexName := op.Name
+	if indexName == "" {
+		// Auto-generate index name from columns when not provided
+		colNames := make([]string, len(op.Index.Columns))
+		for i, col := range op.Index.Columns {
+			colNames[i] = col.Name
+		}
+		indexName = fmt.Sprintf("idx_%s_%s", op.Table, strings.Join(colNames, "_"))
+	}
+	return fmt.Sprintf("DROP INDEX %s;", quoteIdentifier(indexName))
 }
 
 // generateCreateForeignKey generates ALTER TABLE ADD CONSTRAINT statement.
@@ -359,9 +368,43 @@ func (g *Generator) generateReverseOperation(op diff.Operation) (string, string)
 		return "", fmt.Sprintf("-- WARNING: ALTER COLUMN %s.%s may not be safely reversible",
 			o.Table, o.Column)
 	case diff.CreateIndex:
-		return fmt.Sprintf("DROP INDEX %s;", quoteIdentifier(o.Index.Name)), ""
+		indexName := o.Index.Name
+		if indexName == "" {
+			// Generate index name if not provided
+			colNames := make([]string, len(o.Index.Columns))
+			for i, col := range o.Index.Columns {
+				colNames[i] = col.Name
+			}
+			indexName = fmt.Sprintf("idx_%s_%s", o.Table, strings.Join(colNames, "_"))
+		}
+		return fmt.Sprintf("DROP INDEX %s;", quoteIdentifier(indexName)), ""
 	case diff.DropIndex:
-		return "", fmt.Sprintf("-- WARNING: Cannot reverse DROP INDEX %s without schema info", o.Name)
+		// Reverse DROP INDEX = CREATE INDEX
+		indexName := o.Name
+		if indexName == "" {
+			// Auto-generate index name from columns
+			colNames := make([]string, len(o.Index.Columns))
+			for i, col := range o.Index.Columns {
+				colNames[i] = col.Name
+			}
+			indexName = fmt.Sprintf("idx_%s_%s", o.Table, strings.Join(colNames, "_"))
+		}
+
+		unique := ""
+		if o.Index.Unique {
+			unique = "UNIQUE "
+		}
+
+		columns := make([]string, len(o.Index.Columns))
+		for i, col := range o.Index.Columns {
+			columns[i] = quoteIdentifier(col.Name)
+		}
+
+		return fmt.Sprintf("CREATE %sINDEX %s ON %s (%s);",
+			unique,
+			quoteIdentifier(indexName),
+			quoteIdentifier(o.Table),
+			strings.Join(columns, ", ")), ""
 	case diff.CreateForeignKey:
 		fkName := o.Constraint.Name
 		if fkName == "" {

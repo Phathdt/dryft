@@ -189,12 +189,23 @@ func TestGenerateReverse_CreateIndex(t *testing.T) {
 func TestGenerateReverse_DropIndex(t *testing.T) {
 	gen := NewGenerator(sql.GeneratorOptions{})
 
-	op := diff.DropIndex{Table: "users", Name: "idx_users_email"}
+	op := diff.DropIndex{
+		Table: "users",
+		Name:  "idx_users_email",
+		Index: schema.Index{
+			Columns: []schema.IndexColumn{
+				{Name: "email"},
+			},
+		},
+	}
 	sql, warning := gen.generateReverseOperation(op)
 
-	// DropIndex is irreversible without schema info
-	assert.Empty(t, sql)
-	assert.Contains(t, warning, "Cannot reverse DROP INDEX")
+	// DropIndex reverse is now CREATE INDEX (after fix)
+	assert.Contains(t, sql, "CREATE INDEX")
+	assert.Contains(t, sql, "idx_users_email")
+	assert.Contains(t, sql, "users")
+	assert.Contains(t, sql, "email")
+	assert.Empty(t, warning)
 }
 
 func TestGenerateReverse_CreateForeignKey(t *testing.T) {
