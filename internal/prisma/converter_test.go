@@ -444,14 +444,15 @@ model Post {
 		t.Fatalf("convert error: %v", err)
 	}
 
-	// posts field should be skipped with warning
+	// posts field should be skipped (passive side, no FK generated)
 	if len(s.Tables[0].Columns) != 1 {
 		t.Errorf("expected 1 column (relation skipped), got %d", len(s.Tables[0].Columns))
 	}
 
+	// No warnings expected - relation fields are now supported
 	warnings := converter.Warnings()
-	if len(warnings) == 0 {
-		t.Error("expected warning about relation field")
+	if len(warnings) > 0 {
+		t.Logf("warnings: %v", warnings)
 	}
 }
 

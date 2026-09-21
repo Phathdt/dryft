@@ -153,6 +153,15 @@ func (d *Differ) diffTables(before, after *schema.Schema) ([]Operation, error) {
 					Index: idx,
 				})
 			}
+
+			// Generate CreateForeignKey operations for FKs on new tables
+			// (SQL generator doesn't output FKs from CreateTable.Table.ForeignKeys)
+			for _, fk := range table.ForeignKeys {
+				ops = append(ops, CreateForeignKey{
+					Table:      table.Name,
+					Constraint: fk,
+				})
+			}
 		}
 	}
 
