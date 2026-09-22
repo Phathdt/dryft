@@ -136,8 +136,8 @@ model Order {
 	var fkSQL string
 	for _, stmt := range sqlStatements {
 		if strings.Contains(stmt, "FOREIGN KEY") &&
-		   strings.Contains(stmt, "tenant_id") &&
-		   strings.Contains(stmt, "order_id") {
+			strings.Contains(stmt, "tenant_id") &&
+			strings.Contains(stmt, "order_id") {
 			foundFK = true
 			fkSQL = stmt
 			break

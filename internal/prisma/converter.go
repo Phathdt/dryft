@@ -9,10 +9,10 @@ import (
 
 // Converter converts Prisma AST to Internal Schema.
 type Converter struct {
-	warnings           []string
-	enumNames          map[string]bool
-	modelToTableMap    map[string]string            // Maps Prisma model names to DB table names
-	modelFieldToDbCol  map[string]map[string]string // Maps (modelName → (prismaField → dbColumn))
+	warnings          []string
+	enumNames         map[string]bool
+	modelToTableMap   map[string]string            // Maps Prisma model names to DB table names
+	modelFieldToDbCol map[string]map[string]string // Maps (modelName → (prismaField → dbColumn))
 }
 
 // NewConverter creates a new AST to Internal Schema converter.
