@@ -122,7 +122,7 @@ func TestSomething_Integration(t *testing.T) {
 
 ## Current Implementation Status
 
-**🎉 MVP Complete** (all 8 phases, as of 2026-09-16):
+**🎉 MVP Complete** (all 8 phases, as of 2026-09-21):
 - ✅ CLI framework and config loading
 - ✅ Internal schema model (normalized IR)
 - ✅ PostgreSQL introspection (tables, columns, constraints, indexes, enums)
@@ -131,7 +131,8 @@ func TestSomething_Integration(t *testing.T) {
 - ✅ Schema diff engine with dependency ordering
 - ✅ PostgreSQL SQL generator
 - ✅ Goose migration formatter (Up/Down migrations)
-- ✅ 57 integration tests passing (testcontainers)
+- ✅ Prisma @relation field support with FK generation (Issue #10)
+- ✅ 68 integration tests passing (testcontainers)
 
 **Test Coverage**:
 - Round-trip integrity: DB → Prisma → Parse → Verify
@@ -140,6 +141,7 @@ func TestSomething_Integration(t *testing.T) {
 - All PostgreSQL types (15 tests)
 - Constraints: PKs, FKs, CHECK, UNIQUE (10 tests)
 - Indexes: BTree, GIN, GiST, Hash, partial (8 tests)
+- Relations: @relation parsing, FK generation, composite FKs (11 tests)
 - Edge cases: Unicode, keywords, circular FKs (12 tests)
 
 ## Known Issues & Limitations
@@ -151,12 +153,6 @@ func TestSomething_Integration(t *testing.T) {
 - **Affected**: `internal/sql/postgres.go`, `internal/migration/goose.go`
 - **Workaround**: Manually add CREATE INDEX statements
 - **Status**: Bug, needs investigation in SQL generator
-
-**Issue #10: Prisma relation fields skipped**
-- **Impact**: `@relation` fields are parsed with warnings but not converted to FK constraints
-- **Affected**: `internal/prisma/converter.go:87-91`, `internal/prisma/ast.go`
-- **Behavior**: Shows warning "relation field skipped (relations not supported in MVP)"
-- **Status**: Core feature, high priority for v0.2
 
 ### 🟡 Medium Priority (UX & Safety)
 
@@ -195,21 +191,15 @@ func TestSomething_Integration(t *testing.T) {
    - Verify `internal/migration/goose.go` includes indexes
    - Add regression tests for index generation
 
-2. **Implement Issue #10** (Prisma relation support)
-   - Parse `@relation` fields completely
-   - Convert to FK constraints in internal schema
-   - Generate proper FK DDL in migrations
-   - Handle onDelete/onUpdate actions
+2. **Implement Issue #15** (Auto rename detection)
+   - Heuristic detection (similar names, same type)
+   - Interactive confirmation for safety
+   - Prevent accidental data loss
 
 3. **Add Issue #23** (E2E migration tests)
    - Test: Prisma → SQL → PostgreSQL → Introspect → Verify
    - Use testcontainers for isolated PostgreSQL
    - Effort: ~2 hours, high value for regression safety
-
-4. **Implement Issue #15** (Auto rename detection)
-   - Heuristic detection (similar names, same type)
-   - Interactive confirmation for safety
-   - Prevent accidental data loss
 
 ## Configuration
 

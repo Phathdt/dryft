@@ -9,15 +9,19 @@ import (
 
 // Converter converts Prisma AST to Internal Schema.
 type Converter struct {
-	warnings  []string
-	enumNames map[string]bool
+	warnings          []string
+	enumNames         map[string]bool
+	modelToTableMap   map[string]string            // Maps Prisma model names to DB table names
+	modelFieldToDbCol map[string]map[string]string // Maps (modelName → (prismaField → dbColumn))
 }
 
 // NewConverter creates a new AST to Internal Schema converter.
 func NewConverter() *Converter {
 	return &Converter{
-		warnings:  []string{},
-		enumNames: make(map[string]bool),
+		warnings:          []string{},
+		enumNames:         make(map[string]bool),
+		modelToTableMap:   make(map[string]string),
+		modelFieldToDbCol: make(map[string]map[string]string),
 	}
 }
 
@@ -28,14 +32,66 @@ func (c *Converter) Convert(ast *Schema) (*schema.Schema, error) {
 		Enums:  []schema.Enum{},
 	}
 
-	// First pass: collect enum names for relation detection
+	// First pass: collect enum names, model→table mappings, and field mappings
 	enumNames := make(map[string]bool)
+	modelToTableMap := make(map[string]string)
+	modelFieldToDbCol := make(map[string]map[string]string)
+
 	for _, decl := range ast.Declarations {
 		if enum, ok := decl.(*EnumDeclaration); ok {
 			enumNames[enum.Name] = true
 		}
+
+		if model, ok := decl.(*ModelDeclaration); ok {
+			// Default: model name = table name
+			tableName := model.Name
+
+			// Check for @@map attribute
+			for _, attr := range model.Attributes {
+				if attr.Name == "map" && len(attr.Args) > 0 {
+					if mapped, ok := attr.Args[0].Value.(string); ok {
+						tableName = mapped
+						break
+					}
+				}
+			}
+
+			modelToTableMap[model.Name] = tableName
+
+			// Build field→column mapping for this model
+			fieldMap := make(map[string]string)
+			for _, field := range model.Fields {
+				// Skip relation fields (type is another model, capitalized)
+				// Scalar types: String, Int, BigInt, Float, Decimal, Boolean, DateTime, Json, Bytes
+				// Enum types: custom enum names (also capitalized, but we'll include all scalar fields)
+				// Relation types: another Model (we skip these)
+
+				// Simple heuristic: if field type is not in our scalar list and is capitalized,
+				// it's likely a relation. But to be safe, we include everything except known relations.
+				// Actually, simpler: just map all fields here. Relation fields won't hurt.
+
+				prismaFieldName := field.Name
+				dbColumnName := prismaFieldName // default
+
+				// Check for @map attribute
+				for _, attr := range field.Attributes {
+					if attr.Name == "map" && len(attr.Args) > 0 {
+						if mapped, ok := attr.Args[0].Value.(string); ok {
+							dbColumnName = mapped
+							break
+						}
+					}
+				}
+
+				fieldMap[prismaFieldName] = dbColumnName
+			}
+			modelFieldToDbCol[model.Name] = fieldMap
+		}
 	}
+
 	c.enumNames = enumNames
+	c.modelToTableMap = modelToTableMap
+	c.modelFieldToDbCol = modelFieldToDbCol
 
 	// Second pass: convert declarations
 	for _, decl := range ast.Declarations {
@@ -56,6 +112,11 @@ func (c *Converter) Convert(ast *Schema) (*schema.Schema, error) {
 			// MVP: generator is parsed but not used in internal schema
 			continue
 		}
+	}
+
+	// Third pass: validate FK reference columns exist in target tables
+	if err := c.validateForeignKeyReferences(s); err != nil {
+		return nil, err
 	}
 
 	return s, nil
@@ -84,10 +145,9 @@ func (c *Converter) convertModel(model *ModelDeclaration) (*schema.Table, error)
 	var uniqueFields []string
 
 	for _, field := range model.Fields {
-		// Skip relation fields (MVP: not supported)
+		// Skip relation fields - they will be processed separately for FK generation
 		if c.isRelationField(field) {
-			c.addWarning(fmt.Sprintf("model %s: relation field %q skipped (relations not supported in MVP)",
-				model.Name, field.Name))
+			// Relation fields don't create columns, only FKs
 			continue
 		}
 
@@ -136,6 +196,9 @@ func (c *Converter) convertModel(model *ModelDeclaration) (*schema.Table, error)
 		prismaToDbFieldMap[prismaFieldName] = dbColumnName
 		scalarFields[prismaFieldName] = true
 	}
+
+	// Store field mappings for this model in global map (used for FK reference validation)
+	c.modelFieldToDbCol[model.Name] = prismaToDbFieldMap
 
 	// Process model-level attributes
 	for _, attr := range model.Attributes {
@@ -218,6 +281,24 @@ func (c *Converter) convertModel(model *ModelDeclaration) (*schema.Table, error)
 			Type:    schema.ConstraintUnique,
 			Columns: []string{field},
 		})
+	}
+
+	// Process relation fields to generate foreign keys
+	for _, field := range model.Fields {
+		if !c.isRelationField(field) {
+			continue
+		}
+
+		// Process relation field to generate FK constraint
+		fk, err := c.buildForeignKeyFromRelation(field, model, table.Name, prismaToDbFieldMap)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build foreign key from relation field %q: %w", field.Name, err)
+		}
+
+		// Skip if no FK (passive side of relation)
+		if fk != nil {
+			table.ForeignKeys = append(table.ForeignKeys, *fk)
+		}
 	}
 
 	return table, nil
@@ -484,4 +565,242 @@ func (c *Converter) addWarning(msg string) {
 // Warnings returns all collected warnings.
 func (c *Converter) Warnings() []string {
 	return c.warnings
+}
+
+// validateForeignKeyReferences validates that all FK reference columns exist in target tables.
+func (c *Converter) validateForeignKeyReferences(s *schema.Schema) error {
+	// Build table lookup map
+	tablesByName := make(map[string]*schema.Table)
+	for i := range s.Tables {
+		tablesByName[s.Tables[i].Name] = &s.Tables[i]
+	}
+
+	// Validate each FK
+	for _, table := range s.Tables {
+		for _, fk := range table.ForeignKeys {
+			// Check if referenced table exists
+			refTable, exists := tablesByName[fk.RefTable]
+			if !exists {
+				return fmt.Errorf(
+					"table %q: foreign key references non-existent table %q",
+					table.Name, fk.RefTable,
+				)
+			}
+
+			// Build column lookup for referenced table
+			refColumns := make(map[string]bool)
+			for _, col := range refTable.Columns {
+				refColumns[col.Name] = true
+			}
+
+			// Validate all reference columns exist
+			for _, refCol := range fk.RefColumns {
+				if !refColumns[refCol] {
+					return fmt.Errorf(
+						"table %q: foreign key references non-existent column %q in table %q",
+						table.Name, refCol, fk.RefTable,
+					)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// relationSpec holds parsed @relation attribute data.
+type relationSpec struct {
+	name       string   // Optional relation name
+	fields     []string // Local fields (e.g., [userId])
+	references []string // Referenced fields (e.g., [id])
+	onDelete   string   // OnDelete action (e.g., "Cascade")
+	onUpdate   string   // OnUpdate action (e.g., "Restrict")
+}
+
+// buildForeignKeyFromRelation creates a ForeignKey from a Prisma relation field.
+// Returns nil for passive side (back-reference fields like User.posts Post[]).
+func (c *Converter) buildForeignKeyFromRelation(
+	field Field,
+	model *ModelDeclaration,
+	tableName string,
+	prismaToDbFieldMap map[string]string,
+) (*schema.ForeignKey, error) {
+	// List fields (e.g., Post[]) are passive side - no FK generation
+	if field.Type.List {
+		// Parse @relation to check for invalid fields/references on list type
+		relSpec, err := c.parseRelationAttribute(field.Attributes)
+		if err != nil {
+			return nil, err
+		}
+		if relSpec != nil && (len(relSpec.fields) > 0 || len(relSpec.references) > 0) {
+			return nil, fmt.Errorf("list field %q cannot have fields or references in @relation", field.Name)
+		}
+		// Valid passive side - skip FK generation
+		return nil, nil
+	}
+
+	// Scalar fields are active side - parse @relation and generate FK
+	relSpec, err := c.parseRelationAttribute(field.Attributes)
+	if err != nil {
+		return nil, err
+	}
+
+	// If no @relation attribute or no fields specified, skip FK generation
+	if relSpec == nil || len(relSpec.fields) == 0 {
+		return nil, nil
+	}
+
+	// Validate fields and references match in count
+	if len(relSpec.fields) != len(relSpec.references) {
+		return nil, fmt.Errorf(
+			"@relation fields and references count mismatch: %d fields vs %d references",
+			len(relSpec.fields), len(relSpec.references),
+		)
+	}
+
+	// Map Prisma field names to DB column names
+	fkColumns := make([]string, len(relSpec.fields))
+	for i, prismaField := range relSpec.fields {
+		dbColumn, ok := prismaToDbFieldMap[prismaField]
+		if !ok {
+			return nil, fmt.Errorf(
+				"field %q in @relation references non-existent scalar field %q",
+				field.Name, prismaField,
+			)
+		}
+		fkColumns[i] = dbColumn
+	}
+
+	// Referenced table: use mapped table name from model→table map
+	refModelName := field.Type.Name
+	refTable, ok := c.modelToTableMap[refModelName]
+	if !ok {
+		// Model not found in map - this shouldn't happen if Convert() ran properly
+		// Fall back to model name for safety
+		refTable = refModelName
+		c.addWarning(fmt.Sprintf(
+			"model %q: referenced model %q not found in model→table map, using model name as table name",
+			model.Name, refModelName,
+		))
+	}
+
+	// Map referenced Prisma field names to DB column names
+	refFieldMap, hasMap := c.modelFieldToDbCol[refModelName]
+	refColumns := make([]string, len(relSpec.references))
+	for i, prismaField := range relSpec.references {
+		if hasMap {
+			if dbCol, found := refFieldMap[prismaField]; found {
+				refColumns[i] = dbCol
+			} else {
+				// Field not in map - use as-is (might be unmapped field)
+				refColumns[i] = prismaField
+			}
+		} else {
+			// No map for this model - use Prisma field name as-is
+			refColumns[i] = prismaField
+		}
+	}
+
+	// Parse referential actions
+	onDelete, err := c.parseReferentialAction(relSpec.onDelete)
+	if err != nil {
+		return nil, fmt.Errorf("invalid onDelete action: %w", err)
+	}
+
+	onUpdate, err := c.parseReferentialAction(relSpec.onUpdate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid onUpdate action: %w", err)
+	}
+
+	// Build FK constraint
+	fk := &schema.ForeignKey{
+		Name:       c.generateForeignKeyName(tableName, fkColumns),
+		Columns:    fkColumns,
+		RefTable:   refTable,
+		RefColumns: refColumns,
+		OnDelete:   onDelete,
+		OnUpdate:   onUpdate,
+	}
+
+	return fk, nil
+}
+
+// generateForeignKeyName creates a consistent FK constraint name.
+func (c *Converter) generateForeignKeyName(tableName string, columns []string) string {
+	return fmt.Sprintf("fk_%s_%s", tableName, strings.Join(columns, "_"))
+}
+
+// parseRelationAttribute extracts @relation attribute data.
+// Returns nil if no @relation attribute found.
+func (c *Converter) parseRelationAttribute(attrs []FieldAttribute) (*relationSpec, error) {
+	var relationAttr *FieldAttribute
+	for i := range attrs {
+		if attrs[i].Name == "relation" {
+			relationAttr = &attrs[i]
+			break
+		}
+	}
+
+	if relationAttr == nil {
+		return nil, nil
+	}
+
+	spec := &relationSpec{}
+
+	// Parse arguments
+	for _, arg := range relationAttr.Args {
+		switch arg.Name {
+		case "": // Positional argument - relation name
+			if name, ok := arg.Value.(string); ok {
+				spec.name = name
+			}
+		case "fields":
+			if fields, ok := arg.Value.([]string); ok {
+				spec.fields = fields
+			} else {
+				return nil, fmt.Errorf("@relation fields argument must be an array")
+			}
+		case "references":
+			if refs, ok := arg.Value.([]string); ok {
+				spec.references = refs
+			} else {
+				return nil, fmt.Errorf("@relation references argument must be an array")
+			}
+		case "onDelete":
+			if action, ok := arg.Value.(string); ok {
+				spec.onDelete = action
+			} else {
+				return nil, fmt.Errorf("@relation onDelete must be a string")
+			}
+		case "onUpdate":
+			if action, ok := arg.Value.(string); ok {
+				spec.onUpdate = action
+			} else {
+				return nil, fmt.Errorf("@relation onUpdate must be a string")
+			}
+		default:
+			// Unknown argument - warn but don't error
+			c.addWarning(fmt.Sprintf("unknown @relation argument: %s", arg.Name))
+		}
+	}
+
+	return spec, nil
+}
+
+// parseReferentialAction maps Prisma action names to schema.ReferentialAction.
+func (c *Converter) parseReferentialAction(action string) (schema.ReferentialAction, error) {
+	switch action {
+	case "", "NoAction":
+		return schema.ActionNoAction, nil
+	case "Cascade":
+		return schema.ActionCascade, nil
+	case "Restrict":
+		return schema.ActionRestrict, nil
+	case "SetNull":
+		return schema.ActionSetNull, nil
+	case "SetDefault":
+		return schema.ActionSetDefault, nil
+	default:
+		return schema.ActionNone, fmt.Errorf("unknown referential action: %s", action)
+	}
 }

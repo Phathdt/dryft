@@ -1,3 +1,40 @@
+SHELL := /usr/bin/env bash
+.SHELLFLAGS = -euo pipefail -c
+
+# ============================================================================
+# Version detection
+# ============================================================================
+IN_GIT := $(if $(wildcard .git),true,false)
+
+ifeq ($(strip $(VERSION)),)
+ifeq ($(IN_GIT),true)
+# Try to get git tag first, fallback to branch-commit
+GIT_TAG := $(shell git describe --tags --exact-match 2>/dev/null)
+ifneq ($(GIT_TAG),)
+VERSION = $(GIT_TAG)
+else
+BRANCH_NAME := $(shell git rev-parse --abbrev-ref HEAD | sed 's/\//-/g')
+SHORT_COMMIT := $(shell git rev-parse --short HEAD)
+VERSION = $(BRANCH_NAME)-$(SHORT_COMMIT)
+endif
+else
+VERSION = unknown
+endif
+endif
+
+BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+GIT_COMMIT = $(shell git rev-parse HEAD 2>/dev/null || echo unknown)
+ARCH = $(shell go env GOARCH)
+
+# ============================================================================
+# Build configuration
+# ============================================================================
+GO_LDFLAGS := -X 'github.com/phathdt/dryft/internal/cli.Version=$(VERSION)'
+GO_LDFLAGS += -X 'github.com/phathdt/dryft/internal/cli.Commit=$(GIT_COMMIT)'
+GO_LDFLAGS += -X 'github.com/phathdt/dryft/internal/cli.BuildDate=$(BUILD_DATE)'
+GO_LDFLAGS += -X 'github.com/phathdt/dryft/internal/cli.Arch=$(ARCH)'
+GO_LDFLAGS += -s -w
+
 .PHONY: help build test test-short test-integration clean install fmt vet lint run
 
 # Default target
@@ -18,20 +55,15 @@ help:
 
 # Build the binary
 build:
-	@echo "Building dryft..."
+	@echo "Building dryft $(VERSION)..."
 	@mkdir -p bin
-	@go build -ldflags="\
-		-X 'github.com/phathdt/dryft/internal/cli.Version=$(shell git describe --tags --always --dirty 2>/dev/null || echo dev)' \
-		-X 'github.com/phathdt/dryft/internal/cli.Commit=$(shell git rev-parse HEAD 2>/dev/null || echo unknown)' \
-		-X 'github.com/phathdt/dryft/internal/cli.BuildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)' \
-		-X 'github.com/phathdt/dryft/internal/cli.Arch=$(shell go env GOARCH)'" \
-		-o bin/dryft ./cmd/dryft
+	@CGO_ENABLED=0 go build -ldflags="$(GO_LDFLAGS)" -o bin/dryft ./cmd/dryft
 	@echo "✓ Built: ./bin/dryft"
 
 # Install to GOPATH/bin
 install:
 	@echo "Installing dryft..."
-	@go install ./cmd/dryft
+	@go install -ldflags="$(GO_LDFLAGS)" ./cmd/dryft
 	@echo "✓ Installed to $(shell go env GOPATH)/bin/dryft"
 
 # Run all tests
